@@ -15,6 +15,7 @@
 #include "dspCodeImg.h"
 
 #define DMA_TRANSFER_SIZE            (0x400000U)
+registerTable *gpRegisterTable = NULL;
 //
 // small tools.
 //
@@ -274,10 +275,13 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
 
 	// because of PCIE Outbound windows size is 1M.
 	alignPhyAddr = ((DMAPhyAddr + 0x100000) & (~0x100000));
+	debug_printf("the dma phy addr is 0x%x\n",alignPhyAddr);
 	memOffset = (alignPhyAddr - DMAPhyAddr);
 	addrMap2DSPPCIE = (uint32_t)(DMAVirAddr + memOffset);
 
 	pRegisterTable = (registerTable *) addrMap2DSPPCIE;
+	gpRegisterTable = pRegisterTable;
+	pRegisterTable->registerPhyAddrInPc = alignPhyAddr;
 
 	set_memory_ro(addrMap2DSPPCIE, 1);
 

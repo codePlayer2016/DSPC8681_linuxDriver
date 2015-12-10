@@ -45,6 +45,7 @@
 #include <linux/cdev.h>
 #include <linux/vmalloc.h>
 
+#include "common.h"
 #include "LinkLayer.h"
 #include "DPUDriver.h"
 #include "DPURegs.h"
@@ -68,6 +69,8 @@ MODULE_LICENSE("GPL v2");
 #define myIowrite32 iowrite32
 #endif
 
+#define DSP_RUN_READY			(0x00010000U)
+#define DSP_RUN_FAIL			(0x00000000U)
 /* Block size in bytes when r/w data between GPP and DSP via DSP CPU */
 
 /* Data size in bytes when r/w data bewteen GPP and DSP via EDMA:
@@ -343,19 +346,46 @@ int DPU_probe(struct pci_dev *pci_dev, const struct pci_device_id *pci_id)
 int DPU_open(struct inode *node, struct file *file)
 {
 	int retValue = 0;
+	int retLinkValue = 0;
 	LinkLayerHandler *pHandle = NULL;
-
-	retValue = LinkLayer_Open(&pHandle, g_pPcieDev, g_pPcieBarReg,
+	debug_printf("Open \n");
+	// init linklayer.
+	retLinkValue = LinkLayer_Open(&pHandle, g_pPcieDev, g_pPcieBarReg,
 			&writeSemaphore);
-	if (retValue != 0)
+	if (retLinkValue != 0)
 	{
-		printk("LinkLayer_Open fail:%x\n", retValue);
+		debug_printf("LinkLayer_Open fail:%x\n", retValue);
+
+		retValue = retLinkValue;
 	}
 	else
 	{
 		file->private_data = pHandle;
 	}
 
+	// wait DSP ready.
+	// TODO: polling in the app.
+	if (retLinkValue == 0)
+	{
+		retLinkValue = pollValue(&(pHandle->pRegisterTable->DPUBootStatus),
+		DSP_RUN_READY, 0x07ffffff);
+	}
+	else
+	{
+	}
+
+	if (retLinkValue == 0)
+	{
+		debug_printf("dsp is ready:DPUBootStatus=%x\n",
+				pHandle->pRegisterTable->DPUBootStatus);
+	}
+	else
+	{
+		debug_printf("wait dsp ready time out DPUBootStatus=0x%x\n",
+				pHandle->pRegisterTable->DPUBootStatus);
+		retValue = retLinkValue;
+
+	}
 	return (retValue);
 }
 
@@ -363,25 +393,30 @@ int DPU_mmap(struct file *filp, struct vm_area_struct *vma)
 {
 	int retValue = 0;
 	int stateCode = 0;
-	unsigned long phyAddrFrameNO;
-	unsigned long rangeLength_vma;
+	uint32_t phyAddrFrameNO;
+	uint32_t rangeLength_vma;
 	intptr_t *pAlignDMAVirtAddr =
-			((intptr_t *) ((LinkLayerHandler *) (filp->private_data))->pRegisterTable);
-// remap 1k readonly
+			((intptr_t *) (((LinkLayerHandler *) (filp->private_data))->pRegisterTable));
+#if 0
+// remap 4k readonly
 	phyAddrFrameNO = virt_to_phys(pAlignDMAVirtAddr);
+	debug_printf("phyAddrFrameNO=0x%x\n", phyAddrFrameNO);
+	phyAddrFrameNO =
+	((LinkLayerHandler *) (filp->private_data))->pRegisterTable->registerPhyAddrInPc;
+	debug_printf("phyAddrFrameNO=0x%x\n", phyAddrFrameNO);
 	phyAddrFrameNO = (phyAddrFrameNO >> PAGE_SHIFT);
 	rangeLength_vma = MMAP_PAGE_SIZE;
 	stateCode = remap_pfn_range(vma, vma->vm_start, phyAddrFrameNO,
 			rangeLength_vma, PAGE_READONLY);
 	if (stateCode < 0)
 	{
-		printk("lhs remap register page  error\n");
+		debug_printf("lhs remap register page  error\n");
 	}
 	else
 	{
 	}
 
-// remap 1M-1K
+// remap 1M-4K
 	if (stateCode >= 0)
 	{
 		vma->vm_start += MMAP_PAGE_SIZE;
@@ -392,7 +427,7 @@ int DPU_mmap(struct file *filp, struct vm_area_struct *vma)
 				rangeLength_vma, PAGE_SHARED);
 		if (stateCode < 0)
 		{
-			printk("lhs remap data pages error\n");
+			debug_printf("lhs remap data pages error\n");
 		}
 		else
 		{
@@ -402,6 +437,25 @@ int DPU_mmap(struct file *filp, struct vm_area_struct *vma)
 	{
 	}
 	retValue = stateCode;
+#endif
+	phyAddrFrameNO = virt_to_phys(pAlignDMAVirtAddr);
+	debug_printf("phyAddrFrameNO=0x%x\n", phyAddrFrameNO);
+	phyAddrFrameNO =
+			((LinkLayerHandler *) (filp->private_data))->pRegisterTable->registerPhyAddrInPc;
+	debug_printf("phyAddrFrameNO=0x%x\n", phyAddrFrameNO);
+	phyAddrFrameNO = (phyAddrFrameNO >> PAGE_SHIFT);
+	rangeLength_vma = (vma->vm_end - vma->vm_start);
+	stateCode = remap_pfn_range(vma, vma->vm_start, phyAddrFrameNO,
+			rangeLength_vma, PAGE_SHARED);
+	if (stateCode < 0)
+	{
+		debug_printf("lhs remap register page  error\n");
+	}
+	else
+	{
+		debug_printf("mmap finished\n");
+		retValue = stateCode;
+	}
 
 	return (retValue);
 }
@@ -412,7 +466,7 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	LinkLayerHandler *pLinkLayer = (LinkLayerHandler *) (filp->private_data);
 
 	int32_t stateCode = 0;
-	printk("arg addr is ------------------ %x cmd is 0x%x  \n", arg, cmd);
+	debug_printf("arg addr is ------------------ %x cmd is 0x%x  \n", arg, cmd);
 
 	switch (cmd)
 	{
@@ -445,7 +499,24 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		{
 		}
 
-		*(pParam->pBufStatus) = stateCode;
+		//*(pParam->pBufStatus) = stateCode;
+		debug_printf("linklayer wait buffer finished\n");
+
+		break;
+	}
+
+	case DPU_IO_CMD_CHANGEBUFFERSTATUS:
+	{
+		stateCode = LinkLayer_ChangeBufferStatus(pLinkLayer,
+				(LINKLAYER_IO_TYPE) arg);
+
+		if (stateCode != 0)
+		{
+			printk("LinkLayer_Confirm failed: %x\n", stateCode);
+		}
+		else
+		{
+		}
 
 		break;
 	}
