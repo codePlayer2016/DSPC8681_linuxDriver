@@ -46,10 +46,31 @@
 #define PCIE_1MB_BITMASK             0xFFF00000
 
 #define WAITTIME (0x0FFFFFFF)
-#define INBUF_READY (0x55aa55aa)
-#define OUTBUF_READY (0xaa55aa55)
-#define WTBUFLENGTH (4*1024U)
-#define RDBUFLENGTH (1*1024*1024U-3*4*1024U)
+//#define INBUF_READY (0x55aa55aa)
+//#define OUTBUF_READY (0xaa55aa55)
+
+// PC-side write(DSP-side read) buffer status.
+#define PC_WT_READY		(0x000055aaU)
+#define PC_WT_OVER		(0x55aa0000U)
+#define PC_WT_BUSY		(0x55555555U)
+// DSP-side read buffer status.
+#define DSP_RD_INIT		(0x000055aaU)
+#define DSP_RD_READY 	(0x55aa0000U)
+#define DSP_RD_OVER 	(0x000055aaU)
+#define DSP_RD_BUSY		(0x55555555U)
+
+// PC-side read(DSP-side write) buffer status.
+#define PC_RD_INIT		(0xaa000055U)
+#define PC_RD_READY		(0x550000aaU)
+#define PC_RD_OVER		(0xaa000055U)
+#define PC_RD_BUSY		(0x55555555U)
+// DSP-side write buffer status.
+#define DSP_WT_READY 	(0xaa000055U)
+#define DSP_WT_OVER 	(0x550000aaU)
+#define DSP_WT_BUSY		(0x55555555U)
+
+#define WTBUFLENGTH (2*4*1024U)
+#define RDBUFLENGTH (4*1024*1024U-4*4*1024U)
 
 #define PCIE_TI_VENDOR               0x104C
 #define PCIE_TI_DEVICE               0xB005

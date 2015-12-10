@@ -47,7 +47,8 @@ typedef struct _tagRegisterTable
 	uint32_t DPUBootStatus;
 	uint32_t writeStatus;
 	uint32_t readStatus;
-	uint32_t reserved0[0x1000 / 4 - 3];
+	uint32_t registerPhyAddrInPc;
+	uint32_t reserved0[0x1000 / 4 - 4];
 
 	// control registers. (4k)
 	uint32_t DPUBootControl;

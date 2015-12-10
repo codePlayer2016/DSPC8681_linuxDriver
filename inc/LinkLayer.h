@@ -16,7 +16,8 @@ typedef struct _tagLinkLayerRegisterTable
 	uint32_t DPUBootStatus;
 	uint32_t writeStatus;
 	uint32_t readStatus;
-	uint32_t reserved0[0x1000 / 4 - 3];
+	uint32_t registerPhyAddrInPc;
+	uint32_t reserved0[0x1000 / 4 - 4];
 
 	// control registers. (4k)
 	uint32_t DPUBootControl;
@@ -24,7 +25,23 @@ typedef struct _tagLinkLayerRegisterTable
 	uint32_t readControl;
 	uint32_t reserved1[0x1000 / 4 - 3];
 } LinkLayerRegisterTable;
+#if 0
+typedef struct _tagRegisterTable
+{
+	// status registers. (4k)
+	uint32_t DPUBootStatus;
+	uint32_t writeStatus;
+	uint32_t readStatus;
+	uint32_t registerPhyAddrInPc;
+	uint32_t reserved0[0x1000 / 4 - 4];
 
+	// control registers. (4k)
+	uint32_t DPUBootControl;
+	uint32_t writeControl;
+	uint32_t readControl;
+	uint32_t reserved1[0x1000 / 4 - 3];
+} registerTable;
+#endif
 typedef struct _tagLinkLayerHandler
 {
 	LinkLayerRegisterTable *pRegisterTable;
@@ -45,5 +62,8 @@ int LinkLayer_WaitBufferReady(LinkLayerHandler *pHandle,
 		LINKLAYER_IO_TYPE ioType, uint32_t pendtime);
 
 int LinkLayer_Confirm(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioType);
+
+int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle,
+		LINKLAYER_IO_TYPE ioType);
 
 #endif // _INC_LINKLAYER_H_
