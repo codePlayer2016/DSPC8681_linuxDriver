@@ -493,15 +493,13 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 				pParam->pendTime);
 		if (stateCode != 0)
 		{
-			printk("LinkLayer_WaitBufferReady timeout: %x\n", stateCode);
+			debug_printf("LinkLayer_WaitBufferReady timeout: %x\n", stateCode);
 		}
 		else
 		{
+			debug_printf("linklayer wait buffer finished\n");
 		}
-
-		//*(pParam->pBufStatus) = stateCode;
-		debug_printf("linklayer wait buffer finished\n");
-
+		copy_to_user((pParam->pBufStatus), &stateCode, sizeof(int));
 		break;
 	}
 

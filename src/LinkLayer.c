@@ -110,13 +110,11 @@ int LinkLayer_WaitBufferReady(LinkLayerHandler *pHandle,
 	if (ioType == LINKLAYER_IO_READ)
 	{
 		pBufferStatus = (uint32_t *) &(pHandle->pRegisterTable->readStatus);
-		//readyValue = INBUF_READY;
 		readyValue = PC_RD_READY;
 	}
 	else
 	{
 		pBufferStatus = (uint32_t *) &(pHandle->pRegisterTable->writeStatus);
-		//readyValue = OUTBUF_READY;
 		readyValue = PC_WT_READY;
 	}
 	retValue = pollValue(pBufferStatus, readyValue, pendtime);
@@ -142,23 +140,6 @@ int LinkLayer_WaitBufferReady(LinkLayerHandler *pHandle,
 			debug_printf("wait write buffer ready time out\n");
 		}
 	}
-#if 0
-	for (pollCount = 0; retValue == 1; pollCount++)
-	{
-		retValue = ((*pBufferStatus != readyValue) && (pollCount < pendtime));
-		printk("");
-	}
-
-	if (pollCount < pendtime)
-	{
-		retValue = 0;
-	}
-	else
-	{
-		printk("<%s>:time out\n", __func__);
-		retValue = -1;
-	}
-#endif
 	return (retValue);
 }
 
