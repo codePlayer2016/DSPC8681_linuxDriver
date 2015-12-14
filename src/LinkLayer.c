@@ -109,11 +109,13 @@ int LinkLayer_WaitBufferReady(LinkLayerHandler *pHandle,
 
 	if (ioType == LINKLAYER_IO_READ)
 	{
+		// wait dsp write over.PC can read.
 		pBufferStatus = (uint32_t *) &(pHandle->pRegisterTable->readStatus);
 		readyValue = PC_RD_READY;
 	}
 	else
 	{
+		// PC wait dsp read zone empty.so PC can write.
 		pBufferStatus = (uint32_t *) &(pHandle->pRegisterTable->writeStatus);
 		readyValue = PC_WT_READY;
 	}
@@ -164,14 +166,26 @@ int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle,
 {
 	int retValue = 0;
 
+	debug_printf("ioType=%d\n", ioType);
 	if (ioType == LINKLAYER_IO_READ)
-	{
+	{	// dsp can write.
 		pHandle->pRegisterTable->readControl = PC_RD_READY;
 	}
-	else
+	if (ioType == LINKLAYER_IO_WRITE)
 	{
+		// PC set the register so dsp can read.
 		pHandle->pRegisterTable->writeControl = PC_WT_OVER;
 		debug_printf("change the writestatus in the dsp\n");
+	}
+	if (ioType == LINKLAYER_IO_READ_FIN)
+	{
+		//pHandle->pRegisterTable->writeControl = PC_WT_OVER;
+	}
+	if (ioType == LINKLAYER_IO_WRITE_FIN)
+	{
+		// PC set the register so dsp can't read.polling
+		// TODO: change the PC_WT_READY to a meaning name.
+		pHandle->pRegisterTable->writeControl = PC_WT_READY;
 	}
 
 	return (retValue);

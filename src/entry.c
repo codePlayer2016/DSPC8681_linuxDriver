@@ -505,8 +505,9 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case DPU_IO_CMD_CHANGEBUFFERSTATUS:
 	{
-		stateCode = LinkLayer_ChangeBufferStatus(pLinkLayer,
-				(LINKLAYER_IO_TYPE) arg);
+		int *flag = (int *) arg;
+		debug_printf("DPU_IO_CMD_CHANGEBUFFERSTATUS:the *flag=%d\n", *flag);
+		stateCode = LinkLayer_ChangeBufferStatus(pLinkLayer, *flag);
 
 		if (stateCode != 0)
 		{

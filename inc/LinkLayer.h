@@ -7,7 +7,10 @@
 
 typedef enum __tagLINKLAYER_IO_TYPE
 {
-	LINKLAYER_IO_READ = 0, LINKLAYER_IO_WRITE
+	LINKLAYER_IO_READ = 0,
+	LINKLAYER_IO_WRITE = 1,
+	LINKLAYER_IO_READ_FIN = 2,
+	LINKLAYER_IO_WRITE_FIN = 3
 } LINKLAYER_IO_TYPE;
 
 typedef struct _tagLinkLayerRegisterTable
@@ -40,7 +43,7 @@ typedef struct _tagRegisterTable
 	uint32_t writeControl;
 	uint32_t readControl;
 	uint32_t reserved1[0x1000 / 4 - 3];
-} registerTable;
+}registerTable;
 #endif
 typedef struct _tagLinkLayerHandler
 {
