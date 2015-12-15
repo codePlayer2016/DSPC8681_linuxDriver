@@ -19,7 +19,9 @@ typedef struct _tagLinkLayerRegisterTable
 	uint32_t DPUBootStatus;
 	uint32_t writeStatus;
 	uint32_t readStatus;
-	uint32_t reserved0[0x1000 / 4 - 3];
+	uint32_t getPicNumers;
+	uint32_t failPicNumers;
+	uint32_t reserved0[0x1000 / 4 - 5];
 
 	// control registers. (4k)
 	uint32_t DPUBootControl;
