@@ -440,9 +440,9 @@ int DPU_mmap(struct file *filp, struct vm_area_struct *vma)
 #endif
 	phyAddrFrameNO = virt_to_phys(pAlignDMAVirtAddr);
 	debug_printf("phyAddrFrameNO=0x%x\n", phyAddrFrameNO);
-	phyAddrFrameNO =
-			((LinkLayerHandler *) (filp->private_data))->pRegisterTable->registerPhyAddrInPc;
-	debug_printf("phyAddrFrameNO=0x%x\n", phyAddrFrameNO);
+	//phyAddrFrameNO =
+	//		((LinkLayerHandler *) (filp->private_data))->pRegisterTable->registerPhyAddrInPc;
+	//debug_printf("phyAddrFrameNO=0x%x\n", phyAddrFrameNO);
 	phyAddrFrameNO = (phyAddrFrameNO >> PAGE_SHIFT);
 	rangeLength_vma = (vma->vm_end - vma->vm_start);
 	stateCode = remap_pfn_range(vma, vma->vm_start, phyAddrFrameNO,
@@ -466,7 +466,6 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	LinkLayerHandler *pLinkLayer = (LinkLayerHandler *) (filp->private_data);
 
 	int32_t stateCode = 0;
-	debug_printf("arg addr is ------------------ %x cmd is 0x%x  \n", arg, cmd);
 
 	switch (cmd)
 	{

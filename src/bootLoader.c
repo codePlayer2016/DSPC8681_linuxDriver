@@ -281,7 +281,7 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
 
 	pRegisterTable = (registerTable *) addrMap2DSPPCIE;
 	gpRegisterTable = pRegisterTable;
-	pRegisterTable->registerPhyAddrInPc = alignPhyAddr;
+	//pRegisterTable->registerPhyAddrInPc = alignPhyAddr;
 
 	set_memory_ro(addrMap2DSPPCIE, 1);
 

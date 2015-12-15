@@ -41,20 +41,22 @@ typedef struct __tagPcieBarReg
 	resource_size_t ddrLen;
 } pcieBarReg_t;
 
+// TODO: rename the element:PC_bootStatusReg,PC_writeStatusReg...,PC_bootCtlReg.
+
 typedef struct _tagRegisterTable
 {
 	// status registers. (4k)
 	uint32_t DPUBootStatus;
 	uint32_t writeStatus;
 	uint32_t readStatus;
-	uint32_t registerPhyAddrInPc;
-	uint32_t reserved0[0x1000 / 4 - 4];
+	uint32_t reserved0[0x1000 / 4 - 3];
 
 	// control registers. (4k)
 	uint32_t DPUBootControl;
 	uint32_t writeControl;
 	uint32_t readControl;
-	uint32_t reserved1[0x1000 / 4 - 3];
+	uint32_t PC_urlNumsReg;
+	uint32_t reserved1[0x1000 / 4 - 4];
 } registerTable;
 
 uint32_t byteTo32bits(uint8_t *pDspCode);

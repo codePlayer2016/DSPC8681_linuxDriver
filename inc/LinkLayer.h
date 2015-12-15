@@ -12,21 +12,21 @@ typedef enum __tagLINKLAYER_IO_TYPE
 	LINKLAYER_IO_READ_FIN = 2,
 	LINKLAYER_IO_WRITE_FIN = 3
 } LINKLAYER_IO_TYPE;
-
+// TODO: merge the structure in LinkLayer.h and common.h
 typedef struct _tagLinkLayerRegisterTable
 {
 	// status registers. (4k)
 	uint32_t DPUBootStatus;
 	uint32_t writeStatus;
 	uint32_t readStatus;
-	uint32_t registerPhyAddrInPc;
-	uint32_t reserved0[0x1000 / 4 - 4];
+	uint32_t reserved0[0x1000 / 4 - 3];
 
 	// control registers. (4k)
 	uint32_t DPUBootControl;
 	uint32_t writeControl;
 	uint32_t readControl;
-	uint32_t reserved1[0x1000 / 4 - 3];
+	uint32_t PC_urlNumsReg;
+	uint32_t reserved1[0x1000 / 4 - 4];
 } LinkLayerRegisterTable;
 #if 0
 typedef struct _tagRegisterTable

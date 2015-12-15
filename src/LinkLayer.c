@@ -166,6 +166,7 @@ int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle,
 {
 	int retValue = 0;
 
+	// TODO: change to switch-case style.
 	debug_printf("ioType=%d\n", ioType);
 	if (ioType == LINKLAYER_IO_READ)
 	{	// dsp can write.
@@ -175,11 +176,13 @@ int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle,
 	{
 		// PC set the register so dsp can read.
 		pHandle->pRegisterTable->writeControl = PC_WT_OVER;
-		debug_printf("change the writestatus in the dsp\n");
+		debug_printf("change the writestatus in the dsp,writeNumer=%x\n",
+				(pHandle->pRegisterTable->writeControl));
 	}
 	if (ioType == LINKLAYER_IO_READ_FIN)
 	{
-		//pHandle->pRegisterTable->writeControl = PC_WT_OVER;
+		// PC read the DSP process result. and dsp need to polling.
+		pHandle->pRegisterTable->readControl = PC_RD_OVER;
 	}
 	if (ioType == LINKLAYER_IO_WRITE_FIN)
 	{
