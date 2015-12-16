@@ -15,6 +15,8 @@
 
 // PC-side write(DSP-side read) buffer status.
 #define PC_WT_READY		(0x000055aaU)
+#define PC_WAIT_WT		(0x000055aaU)
+
 #define PC_WT_OVER		(0x55aa0000U)
 #define PC_WT_BUSY		(0x55555555U)
 // DSP-side read buffer status.
@@ -25,7 +27,12 @@
 
 // PC-side read(DSP-side write) buffer status.
 #define PC_RD_INIT		(0xaa000055U)
+
 #define PC_RD_READY		(0x550000aaU)
+#define PC_RD_ENABLE		(0x550000aaU)
+
+#define PC_WAIT_RD		(0x550000aaU)
+
 #define PC_RD_OVER		(0xaa000055U)
 #define PC_RD_BUSY		(0x55555555U)
 // DSP-side write buffer status.
@@ -107,17 +114,18 @@ int LinkLayer_WaitBufferReady(LinkLayerHandler *pHandle,
 	uint32_t *pBufferStatus = NULL;
 	uint32_t readyValue = 0;
 
+	// PC polling for read.  wait the DSP to wirte finshed.
 	if (ioType == LINKLAYER_IO_READ)
 	{
 		// wait dsp write over.PC can read.
 		pBufferStatus = (uint32_t *) &(pHandle->pRegisterTable->readStatus);
-		readyValue = PC_RD_READY;
+		readyValue = PC_WAIT_RD;
 	}
 	else
 	{
 		// PC wait dsp read zone empty.so PC can write.
 		pBufferStatus = (uint32_t *) &(pHandle->pRegisterTable->writeStatus);
-		readyValue = PC_WT_READY;
+		readyValue = PC_WAIT_WT;
 	}
 	retValue = pollValue(pBufferStatus, readyValue, pendtime);
 	if (retValue == 0)
@@ -169,8 +177,8 @@ int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle,
 	// TODO: change to switch-case style.
 	debug_printf("ioType=%d\n", ioType);
 	if (ioType == LINKLAYER_IO_READ)
-	{	// dsp can write.
-		pHandle->pRegisterTable->readControl = PC_RD_READY;
+	{
+		pHandle->pRegisterTable->readControl = PC_RD_ENABLE;
 	}
 	if (ioType == LINKLAYER_IO_WRITE)
 	{
