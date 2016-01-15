@@ -14,6 +14,11 @@
 #include "DSP_TBL_6678.h"
 #include "dspCodeImg.h"
 
+#define OB_MASK_ONE 	(0xFFF00000)  	// 20-31
+#define OB_MASK_TWO 	(0xFFE00000)  	// 21-31
+#define OB_MASK_FOUR 	(0xFFC00000) 	// 22-31
+#define OB_MASK_EIGHT 	(0xFF800000)	// 23-31
+
 #define DMA_TRANSFER_SIZE            (0x400000U)
 registerTable *gpRegisterTable = NULL;
 //
@@ -215,32 +220,50 @@ int uploadProgram(pcieBarReg_t *pPcieBarReg, uint8_t *pDspImgArray,
 	return (retValue);
 }
 
-uint32_t dspMemoryMap(uint32_t *pRegVirt, uint32_t pcAddr, uint32_t size)
+int dspMemoryMap(uint32_t *pRegVirt, uint32_t pcAddr, uint32_t size)
 {
-	uint32_t retValue = 0;
+	int retValue = 0;
 	uint32_t tmp, pageBase, i;
-	uint32_t *pReg = (uint32_t *) pRegVirt; /* Point to PCIE application registers */
+	uint32_t *pReg = (uint32_t *) pRegVirt;
+	uint32_t obSize = 0;
+	uint32_t baseMask = 0;
+	// TODO: convert to 64 bit machine,will change this code.
 
-	iowrite32(0x0, pReg + OB_SIZE / 4);
-
-	if (size <= PCIE_ADLEN_1MB)
+	if (size <= 0x100000)
 	{
-		pageBase = pcAddr & PCIE_1MB_BITMASK;
+		obSize = 0x0;
+		baseMask = OB_MASK_ONE;
+	}
+	else if (size <= 0x200000)
+	{
+		obSize = 0x1;
+		baseMask = OB_MASK_TWO;
+	}
+	else if (size <= 0x400000)
+	{
+		obSize = 0x2;
+		baseMask = OB_MASK_FOUR;
+	}
+	else if (size <= 0x800000)
+	{
+		obSize = 0x3;
+		baseMask = OB_MASK_EIGHT;
+	}
+	else
+	{
+		retValue = -1;
+	}
+
+	if (retValue == 0)
+	{
+		iowrite32(obSize, pReg + OB_SIZE / 4);
+		pageBase = (pcAddr & baseMask);
 		iowrite32(pageBase | 0x1, pReg + OB_OFFSET_INDEX(0) / 4);
 		iowrite32(0x0, pReg + OB_OFFSET_HI(0) / 4);
 	}
 	else
 	{
-		for (tmp = size, i = 0; tmp > 0; tmp -= PCIE_ADLEN_1MB, i++)
-		{
-			pageBase = (pcAddr + (PCIE_ADLEN_1MB * i)) & PCIE_1MB_BITMASK;
-			iowrite32(pageBase | 0x1, pReg + OB_OFFSET_INDEX(i) / 4);
-			iowrite32(0x0, pReg + OB_OFFSET_HI(i) / 4);
-		}
 	}
-
-	retValue = (PCIE_DATA + (pcAddr & ~PCIE_1MB_BITMASK));
-
 	return (retValue);
 }
 /**
@@ -264,35 +287,41 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
 	int retPollVal = -1;
 
 	uint32_t memOffset = 0;
-	uint32_t gDspPciAdrr = 0;
+	int retMapVal = 0;
 	uint32_t alignPhyAddr = 0;
 	uint32_t addrMap2DSPPCIE = 0;
 	uint32_t registerLength = REG_LEN;
 
-	// alloc DMA zone.
+// alloc DMA zone.
 	DMAVirAddr = (uint8_t*) dma_alloc_coherent(&pPciDev->dev, DMA_TRANSFER_SIZE,
 			&DMAPhyAddr, GFP_KERNEL);
 
-	// because of PCIE Outbound windows size is 1M.
+// because of PCIE Outbound windows size is 1M.
 	alignPhyAddr = ((DMAPhyAddr + 0x100000) & (~0x100000));
-	debug_printf("the dma phy addr is 0x%x\n",alignPhyAddr);
+	debug_printf("the dma phy addr is 0x%x\n", alignPhyAddr);
 	memOffset = (alignPhyAddr - DMAPhyAddr);
 	addrMap2DSPPCIE = (uint32_t)(DMAVirAddr + memOffset);
 
 	pRegisterTable = (registerTable *) addrMap2DSPPCIE;
 	gpRegisterTable = pRegisterTable;
-	//pRegisterTable->registerPhyAddrInPc = alignPhyAddr;
+//pRegisterTable->registerPhyAddrInPc = alignPhyAddr;
 
 	set_memory_ro(addrMap2DSPPCIE, 1);
 
 	pPutDSPImgZone = (uint32_t *) (addrMap2DSPPCIE + registerLength);
 
-	gDspPciAdrr = dspMemoryMap(regVirt, alignPhyAddr, 0x100000);
+	// TODO: the dspMemoryMap ,the last parameter should be variant.
+	retMapVal = dspMemoryMap(regVirt, alignPhyAddr, 0x200000);
+	// TODO process the error.
+	if(retMapVal!=0)
+	{}
+	else
+	{}
 
-	// pushs DSPInit code.
+// pushs DSPInit code.
 	retValue = uploadProgram(pPcieBarReg, _thirdBLCode, 0);
 
-	// waits DSPInitReady.
+// waits DSPInitReady.
 	if (retValue == 0)
 	{
 		retPollVal = pollValue(&(pRegisterTable->DPUBootStatus), DSP_INIT_READY,
@@ -305,18 +334,22 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
 		return (retValue);
 	}
 
-	// pushs the data to the DSP.
+// pushs the data to the DSP.
 	if (retPollVal == 0)
 	{
 		uint32_t DPUCoreLength = ((sizeof(_DPUCore) + 3) / 4) * 4;
+
+		debug_printf("the CodeLength = %x \n", DPUCoreLength);
+
 		memcpy(pPutDSPImgZone, _DPUCore, DPUCoreLength);
+
 		(pRegisterTable->DPUBootControl) = PC_PUSHCODE_FINISH;
 	}
 	else
 	{
 	}
 
-	//wait dsp get the code.
+//wait dsp get the code.
 	if (retPollVal == 0)
 	{
 		retPollVal = pollValue(&(pRegisterTable->DPUBootStatus),
@@ -337,7 +370,7 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
 
 	}
 
-	// wait the dsp crc check result.
+// wait the dsp crc check result.
 	if (retPollVal == 0)
 	{
 		retPollVal = pollValue(&(pRegisterTable->DPUBootStatus),
@@ -349,7 +382,8 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
 		else
 		{
 			retValue = -3;
-			debug_printf("DPUBootStatus=%x\n", (pRegisterTable->DPUBootStatus));
+			debug_printf("failed DPUBootStatus=%x\n",
+					(pRegisterTable->DPUBootStatus));
 			return (retValue);
 		}
 	}
@@ -357,7 +391,7 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
 	{
 	}
 
-	// wait the dsp jump to the dpm code.
+// wait the dsp jump to the dpm code.
 	if (retPollVal == 0)
 	{
 		retPollVal = pollValue(&(pRegisterTable->DPUBootStatus),

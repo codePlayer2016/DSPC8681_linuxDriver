@@ -13,6 +13,9 @@
 #define DPU_IO_CMD_CONFIRM _IOW(PCIEDRIVER_MAGIC,0x104,LINKLAYER_IO_TYPE)
 #define DPU_IO_CMD_CHANGEBUFFERSTATUS _IOW(PCIEDRIVER_MAGIC,0x105,LINKLAYER_IO_TYPE)
 
+#define DPU_IO_CMD_INTERRUPT _IOWR(PCIEDRIVER_MAGIC,0x106,interruptAndPollParam)
+
+
 #define DEV_NAME "DPU_driver_linux"
 
 struct DPU_dev
@@ -26,6 +29,13 @@ typedef struct _tagDPUDriver_WaitBufferReadyParam
 	uint32_t pendTime;
 	int32_t *pBufStatus;
 } DPUDriver_WaitBufferReadyParam, *DPUDriver_WaitBufferReadyParamPtr;
+
+typedef struct _tagInterruptAndPollParam
+{
+	int interruptAndPollDirect;
+	int interruptAndPollResult;
+	uint32_t pollTime;
+} interruptAndPollParam, *pInterruptAndPollParam;
 
 int init_module(void);
 void cleanup_module(void);
