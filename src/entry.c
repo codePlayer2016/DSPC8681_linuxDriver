@@ -518,7 +518,48 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		break;
 	}
-
+//////////////////////////////////////////////////////////////////////////
+		// trigger the interrupt to DSP,make the DSP to start DPM process the picture.
+	case DPU_IO_CMD_INTERRUPT:
+	{
+		printk("trigger a interrupt to DSP\n");
+		uint32_t *pDspMappedRegVirt = g_pPcieBarReg->regVirt;
+		iowrite32(1, pDspMappedRegVirt + LEGACY_A_IRQ_STATUS_RAW / 4);
+#if 0
+		interruptAndPollParam *pSignelParams = (interruptAndPollParam *) arg;
+		if (pSignelParams->interruptAndPollDirect == 0)
+		{
+			uint32_t *pDspMappedRegVirt = g_pPcieBarReg->regVirt;
+			iowrite32(1, pDspMappedRegVirt + LEGACY_A_IRQ_STATUS_RAW / 4);
+		}
+		else if(pSignelParams->interruptAndPollDirect == 1)
+		{
+			// clear the semaphore.
+			// n=polling();
+			// 	if(n==failed)
+			//	{
+			//    m=Semaphore_pend();	// wait interrupt.
+			//	  if(m==0)
+			//	  {
+			//      n=polling();		// there maybe delay between the pcieLink.
+			//	  }
+			//	  else
+			//	  {
+			//	  }
+			//    if(n==0)
+			//	  {}
+			//	  else
+			//	  {}
+			//	}
+			//	else
+			//	{
+			//
+			//	}
+		}
+#endif
+		break;
+	}
+//////////////////////////////////////////////////////////////////////////
 	default:
 	{
 		retValue = 0;
