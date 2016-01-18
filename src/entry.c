@@ -102,8 +102,11 @@ MODULE_LICENSE("GPL v2");
 #define SEM_WAIT_JIFIIES (2*(TIME_HZ))
 
 struct semaphore readSemaphore, writeSemaphore;
+// for DSP ready.
+struct semaphore gDspDpmOverSemaphore;
 
 struct pci_dev *g_pPcieDev = NULL;
+int32_t gHostPciIrqNo=0;
 //pcieBarReg_t pPcieBarReginit;
 //pcieBarReg_t *g_pPcieBarReg = &pPcieBarReginit;
 pcieBarReg_t *g_pPcieBarReg = NULL;
@@ -137,6 +140,7 @@ int init_module(void)
 
 	sema_init(&writeSemaphore, 0);
 	sema_init(&readSemaphore, 0);
+	sema_init(&gDspDpmOverSemaphore, 0);
 
 	retValue = alloc_chrdev_region(&pcieDevNum.devnum, pcieDevNum.minor_first,
 			pcieDevNum.count, DEV_NAME);
@@ -208,7 +212,9 @@ int init_module(void)
 	{
 		PCI_setInBound(g_pPcieDev, g_pPcieBarReg);
 		PCI_EnableDspInterrupt(g_pPcieBarReg);
-		request_irq(16, ISR_handler, IRQF_SHARED, "TI 667x PCIE", &dummy);
+		//request_irq(16, ISR_handler, IRQF_SHARED, "TI 667x PCIE", &dummy);
+		request_irq(g_pPcieDev->irq, ISR_handler, IRQF_SHARED, "TI 667x PCIE", &dummy);
+		printk("the host pci interrupt irq is %d\n",g_pPcieDev->irq);
 	}
 	else
 	{
@@ -560,6 +566,13 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		break;
 	}
 //////////////////////////////////////////////////////////////////////////
+	case DPU_IO_CMD_WAITDPM:
+	{
+		printk("wait the DSP trigger the host\n");
+		down(&gDspDpmOverSemaphore);
+		break;
+	}
+
 	default:
 	{
 		retValue = 0;
@@ -584,5 +597,6 @@ static irqreturn_t ISR_handler(int irq, void *arg)
 {
 	printk("lhs we get the interrupt from the DSP\r\n");
 	PCI_ClearDspInterrupt(g_pPcieBarReg);
-	up(&writeSemaphore);
+	//up(&writeSemaphore);
+	up(&gDspDpmOverSemaphore);
 }

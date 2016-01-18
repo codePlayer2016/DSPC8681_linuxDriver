@@ -84,6 +84,7 @@ int PCI_FindPciDevices(struct pci_dev ** pPcieDev, int MaxCount)
 	if (pciDevCount > 0)
 	{
 		*pPcieDev = devArray[0];//1
+		//gHostPciIrqNo=pPcieDev->irq;
 	}
 	else
 	{
