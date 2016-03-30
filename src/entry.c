@@ -595,7 +595,14 @@ int DPU_release(struct pci_dev* pdev)
 
 static irqreturn_t ISR_handler(int irq, void *arg)
 {
+	debug_printf("ISR_handler function irq is %d\n",irq);
 	printk("lhs we get the interrupt from the DSP\r\n");
+	//cyx add
+	uint32_t status=HAL_CheckPciInterrupt(g_pPcieBarReg);
+	if(status==1){
+		printk("cyx receive interrupt from dsp1111111111\n");
+	}
+	debug_printf("ISR_handler function after HAL_CheckPciInterrupt\n");
 	PCI_ClearDspInterrupt(g_pPcieBarReg);
 	//up(&writeSemaphore);
 	up(&gDspDpmOverSemaphore);

@@ -35,4 +35,7 @@ void PCI_setInBound(struct pci_dev *pPcieDev, pcieBarReg_t *pPcieBarReg);
 void PCI_DisableDspInterrupt(pcieBarReg_t *pPcieBarReg);
 void PCI_ClearDspInterrupt(pcieBarReg_t *pPcieBarReg);
 
+//cyx add
+bool HAL_CheckPciInterrupt(pcieBarReg_t *pPcieBarReg);
+
 #endif /* INC_PCIE_H_ */
