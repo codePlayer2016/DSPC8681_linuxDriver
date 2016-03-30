@@ -600,7 +600,7 @@ static irqreturn_t ISR_handler(int irq, void *arg)
 	//cyx add
 	uint32_t status=HAL_CheckPciInterrupt(g_pPcieBarReg);
 	if(status==1){
-		printk("cyx receive interrupt from dsp1111111111\n");
+		printk("cyx receive interrupt from dsp222222\n");
 	}
 	debug_printf("ISR_handler function after HAL_CheckPciInterrupt\n");
 	PCI_ClearDspInterrupt(g_pPcieBarReg);
