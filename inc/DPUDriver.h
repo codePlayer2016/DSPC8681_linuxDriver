@@ -15,7 +15,8 @@
 
 #define DPU_IO_CMD_INTERRUPT _IOWR(PCIEDRIVER_MAGIC,0x106,interruptAndPollParam)
 #define DPU_IO_CMD_WAITDPM _IOWR(PCIEDRIVER_MAGIC,0x107,interruptAndPollParam)
-
+#define DPU_IO_CMD_WRITE_TIMEOUT _IOWR(PCIEDRIVER_MAGIC,0x108,interruptAndPollParam)
+#define DPU_IO_CMD_READ_TIMEOUT _IOWR(PCIEDRIVER_MAGIC,0x109,interruptAndPollParam)
 #define DEV_NAME "DPU_driver_linux"
 
 struct DPU_dev

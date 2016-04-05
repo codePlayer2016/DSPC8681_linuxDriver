@@ -5,6 +5,34 @@
 #include <linux/semaphore.h>
 #include "pcie.h"
 
+
+// PC-side write(DSP-side read) buffer status.
+#define PC_WT_READY		(0x000055aaU)
+#define PC_WAIT_WT		(0x000055aaU)
+
+#define PC_WT_OVER		(0x55aa0000U)
+#define PC_WT_BUSY		(0x55555555U)
+// DSP-side read buffer status.
+#define DSP_RD_INIT		(0x000055aaU)
+#define DSP_RD_READY 	(0x55aa0000U)
+#define DSP_RD_OVER 	(0x000055aaU)
+#define DSP_RD_BUSY		(0x55555555U)
+
+// PC-side read(DSP-side write) buffer status.
+#define PC_RD_INIT		(0xaa000055U)
+
+#define PC_RD_READY		(0x550000aaU)
+#define PC_RD_ENABLE		(0x550000aaU)
+
+#define PC_WAIT_RD		(0x550000aaU)
+
+#define PC_RD_OVER		(0xaa000055U)
+#define PC_RD_BUSY		(0x55555555U)
+// DSP-side write buffer status.
+#define DSP_WT_READY 	(0xaa000055U)
+#define DSP_WT_OVER 	(0x550000aaU)
+#define DSP_WT_BUSY		(0x55555555U)
+
 typedef enum __tagLINKLAYER_IO_TYPE
 {
 	LINKLAYER_IO_READ = 0,

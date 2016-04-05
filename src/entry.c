@@ -104,6 +104,7 @@ MODULE_LICENSE("GPL v2");
 struct semaphore readSemaphore, writeSemaphore;
 // for DSP ready.
 struct semaphore gDspDpmOverSemaphore;
+struct semaphore timeoutSemaphore;
 
 struct pci_dev *g_pPcieDev = NULL;
 int32_t gHostPciIrqNo=0;
@@ -140,6 +141,7 @@ int init_module(void)
 
 	sema_init(&writeSemaphore, 0);
 	sema_init(&readSemaphore, 0);
+	sema_init(&timeoutSemaphore, 0);
 	sema_init(&gDspDpmOverSemaphore, 0);
 
 	retValue = alloc_chrdev_region(&pcieDevNum.devnum, pcieDevNum.minor_first,
@@ -498,7 +500,7 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 				pParam->pendTime);
 		if (stateCode != 0)
 		{
-			debug_printf("LinkLayer_WaitBufferReady timeout: %x\n", stateCode);
+			debug_printf("LinkLayer_WaitBufferReady timeout: %x\n",stateCode);
 		}
 		else
 		{
@@ -572,6 +574,23 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		down(&gDspDpmOverSemaphore);
 		break;
 	}
+	case DPU_IO_CMD_WRITE_TIMEOUT:
+	{
+		debug_printf("we start to use interrupt for pc write zone timeout\n");
+		if((pLinkLayer->pRegisterTable->writeStatus) & PC_WAIT_WT ){
+			down(&timeoutSemaphore);
+		}
+		break;
+	}
+	case DPU_IO_CMD_READ_TIMEOUT:
+	{
+		debug_printf("we start to use interrupt for pc read zone timeout\n");
+
+		if((pLinkLayer->pRegisterTable->readStatus) & PC_WAIT_RD ){
+			down(&timeoutSemaphore);
+		}
+		break;
+	}
 
 	default:
 	{
@@ -603,7 +622,12 @@ static irqreturn_t ISR_handler(int irq, void *arg)
 		printk("cyx receive interrupt from dsp222222\n");
 	}
 	debug_printf("ISR_handler function after HAL_CheckPciInterrupt\n");
+	//cheak zone status
+
+	up(&timeoutSemaphore);
+	debug_printf("interrupt to deal with poll timeout,timeoutSemaphore is %d\n",&timeoutSemaphore);
+
+	//up(&gDspDpmOverSemaphore);
 	PCI_ClearDspInterrupt(g_pPcieBarReg);
-	//up(&writeSemaphore);
-	up(&gDspDpmOverSemaphore);
+
 }
