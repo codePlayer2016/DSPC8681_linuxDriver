@@ -577,7 +577,10 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case DPU_IO_CMD_WRITE_TIMEOUT:
 	{
 		debug_printf("we start to use interrupt for pc write zone timeout\n");
-		if((pLinkLayer->pRegisterTable->writeStatus) & PC_WAIT_WT ){
+		DPUDriver_WaitBufferReadyParam *pParam =
+						(DPUDriver_WaitBufferReadyParam *) arg;
+		stateCode =LinkLayer_CheckStatus(pLinkLayer,pParam->waitType);
+		if(stateCode==0){
 			down(&timeoutSemaphore);
 		}
 		break;
@@ -585,8 +588,11 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case DPU_IO_CMD_READ_TIMEOUT:
 	{
 		debug_printf("we start to use interrupt for pc read zone timeout\n");
-
-		if((pLinkLayer->pRegisterTable->readStatus) & PC_WAIT_RD ){
+		DPUDriver_WaitBufferReadyParam *pParam =
+								(DPUDriver_WaitBufferReadyParam *) arg;
+		stateCode = LinkLayer_CheckStatus(pLinkLayer,pParam->waitType);
+		if (stateCode == 0)
+		{
 			down(&timeoutSemaphore);
 		}
 		break;

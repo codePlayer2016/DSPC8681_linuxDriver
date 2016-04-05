@@ -98,5 +98,6 @@ int LinkLayer_Confirm(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioType);
 
 int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle,
 		LINKLAYER_IO_TYPE ioType);
+int LinkLayer_CheckStatus(LinkLayerHandler *pHandle,LINKLAYER_IO_TYPE ioType);
 
 #endif // _INC_LINKLAYER_H_
