@@ -14,6 +14,9 @@
 #include "common.h"
 
 extern LinkLayerRegisterTable *gpRegisterTable;
+extern struct semaphore readSemaphore;
+extern struct semaphore writeSemaphore;
+extern struct semaphore gDspDpmOverSemaphore;
 
 int LinkLayer_Open(LinkLayerHandler **ppHandle, struct pci_dev *pPciDev,
 		pcieBarReg_t *pPcieBarReg, struct semaphore *pWriteSemaphore)
@@ -174,23 +177,50 @@ int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle,
 
 	return (retValue);
 }
-int LinkLayer_CheckStatus(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioType)
+int LinkLayer_CheckStatus(LinkLayerHandler *pHandle)
 {
 	int retValue = 1;
-	if (ioType == LINKLAYER_IO_READ)
+	if (pHandle->pRegisterTable->writeStatus & PC_WAIT_WT)
 	{
-		if ((pHandle->pRegisterTable->readStatus) & PC_WAIT_RD)
-		{
-			retValue = 0;
-		}
+		up(&writeSemaphore);
+	}
+	if (pHandle->pRegisterTable->readStatus & PC_WAIT_RD)
+	{
+		up(&readSemaphore);
+	}
+	if (pHandle->pRegisterTable->dpmOverStatus & PC_WAIT_DPMOVER)
+	{
+		up(&gDspDpmOverSemaphore);
+		//clear reg
+		pHandle->pRegisterTable->dpmOverStatus=0;
+	}
+	return retValue;
+}
+int LinkLayer_WaitDpmOver(LinkLayerHandler *pHandle, uint32_t pendtime)
+{
+	int retValue = 1;
+	uint32_t *pBufferStatus = NULL;
+	uint32_t readyValue = 0;
+
+	// PC wait dsp read zone empty.so PC can write.
+	pBufferStatus = (uint32_t *) &(pHandle->pRegisterTable->dpmOverStatus);
+	readyValue = PC_WAIT_DPMOVER;
+
+	debug_printf("111111\n");
+	retValue = pollValue(pBufferStatus, readyValue, pendtime);
+	debug_printf("22222\n");
+	if (retValue == 0)
+	{
+
+		debug_printf("DPM OVER\n");
 
 	}
 	else
 	{
-		if ((pHandle->pRegisterTable->writeStatus) & PC_WAIT_WT)
-		{
-			retValue = 0;
-		}
+		debug_printf("wait DPM OVER time out\n");
+
 	}
-	return retValue;
+	debug_printf("33333\n");
+	return (retValue);
 }
+

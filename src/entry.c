@@ -104,10 +104,12 @@ MODULE_LICENSE("GPL v2");
 struct semaphore readSemaphore, writeSemaphore;
 // for DSP ready.
 struct semaphore gDspDpmOverSemaphore;
-struct semaphore timeoutSemaphore;
 
 struct pci_dev *g_pPcieDev = NULL;
-int32_t gHostPciIrqNo=0;
+//cyx add, for the using of interrupt+poll
+LinkLayerHandler *pHandle = NULL;
+
+int32_t gHostPciIrqNo = 0;
 //pcieBarReg_t pPcieBarReginit;
 //pcieBarReg_t *g_pPcieBarReg = &pPcieBarReginit;
 pcieBarReg_t *g_pPcieBarReg = NULL;
@@ -141,7 +143,6 @@ int init_module(void)
 
 	sema_init(&writeSemaphore, 0);
 	sema_init(&readSemaphore, 0);
-	sema_init(&timeoutSemaphore, 0);
 	sema_init(&gDspDpmOverSemaphore, 0);
 
 	retValue = alloc_chrdev_region(&pcieDevNum.devnum, pcieDevNum.minor_first,
@@ -215,8 +216,9 @@ int init_module(void)
 		PCI_setInBound(g_pPcieDev, g_pPcieBarReg);
 		PCI_EnableDspInterrupt(g_pPcieBarReg);
 		//request_irq(16, ISR_handler, IRQF_SHARED, "TI 667x PCIE", &dummy);
-		request_irq(g_pPcieDev->irq, ISR_handler, IRQF_SHARED, "TI 667x PCIE", &dummy);
-		printk("the host pci interrupt irq is %d\n",g_pPcieDev->irq);
+		request_irq(g_pPcieDev->irq, ISR_handler, IRQF_SHARED, "TI 667x PCIE",
+				&dummy);
+		printk("the host pci interrupt irq is %d\n", g_pPcieDev->irq);
 	}
 	else
 	{
@@ -355,7 +357,6 @@ int DPU_open(struct inode *node, struct file *file)
 {
 	int retValue = 0;
 	int retLinkValue = 0;
-	LinkLayerHandler *pHandle = NULL;
 	debug_printf("Open \n");
 	// init linklayer.
 	retLinkValue = LinkLayer_Open(&pHandle, g_pPcieDev, g_pPcieBarReg,
@@ -500,7 +501,7 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 				pParam->pendTime);
 		if (stateCode != 0)
 		{
-			debug_printf("LinkLayer_WaitBufferReady timeout: %x\n",stateCode);
+			debug_printf("LinkLayer_WaitBufferReady timeout: %x\n", stateCode);
 		}
 		else
 		{
@@ -572,31 +573,37 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	{
 		printk("wait the DSP trigger the host\n");
 		down(&gDspDpmOverSemaphore);
+//		interruptAndPollParam *pParam = (interruptAndPollParam *) arg;
+//		stateCode = LinkLayer_WaitDpmOver(pLinkLayer, pParam->pollTime);
+//		if (stateCode != 0)
+//		{
+//			debug_printf("LinkLayer_WaitDpmOver timeout: %x\n", stateCode);
+//		}
+//		else
+//		{
+//			debug_printf("linklayer WaitDpmOver finished\n");
+//		}
+//		copy_to_user((pParam->interruptAndPollResult), &stateCode, sizeof(int));
 		break;
+
 	}
+
 	case DPU_IO_CMD_WRITE_TIMEOUT:
 	{
-		debug_printf("we start to use interrupt for pc write zone timeout\n");
-		DPUDriver_WaitBufferReadyParam *pParam =
-						(DPUDriver_WaitBufferReadyParam *) arg;
-		stateCode =LinkLayer_CheckStatus(pLinkLayer,pParam->waitType);
-		if(stateCode==0){
-			down(&timeoutSemaphore);
-			copy_to_user((pParam->pBufStatus), &stateCode, sizeof(int));
-		}
+		debug_printf("poll write timeout,we start to use interrupt for pc\n");
+		down(&writeSemaphore);
 		break;
 	}
 	case DPU_IO_CMD_READ_TIMEOUT:
 	{
-		debug_printf("we start to use interrupt for pc read zone timeout\n");
-		DPUDriver_WaitBufferReadyParam *pParam =
-								(DPUDriver_WaitBufferReadyParam *) arg;
-		stateCode = LinkLayer_CheckStatus(pLinkLayer,pParam->waitType);
-		if (stateCode == 0)
-		{
-			down(&timeoutSemaphore);
-			copy_to_user((pParam->pBufStatus), &stateCode, sizeof(int));
-		}
+		debug_printf("poll read timeout,we start to use interrupt for pc\n");
+		down(&readSemaphore);
+		break;
+	}
+	case DPU_IO_CMD_DPM_TIMEOUT:
+	{
+		debug_printf("poll dpm timeout,we start to use interrupt for pc\n");
+		down(&gDspDpmOverSemaphore);
 		break;
 	}
 
@@ -622,20 +629,29 @@ int DPU_release(struct pci_dev* pdev)
 
 static irqreturn_t ISR_handler(int irq, void *arg)
 {
-	debug_printf("ISR_handler function irq is %d\n",irq);
-	printk("lhs we get the interrupt from the DSP\r\n");
+	uint32_t status;
+	uint32_t retValue;
+	debug_printf("ISR_handler function irq is %d\n", irq);
 	//cyx add
-	uint32_t status=HAL_CheckPciInterrupt(g_pPcieBarReg);
-	if(status==1){
+	status = HAL_CheckPciInterrupt(g_pPcieBarReg);
+	if (status == 1)
+	{
 		printk("cyx receive interrupt from dsp222222\n");
 	}
 	debug_printf("ISR_handler function after HAL_CheckPciInterrupt\n");
 	//cheak zone status
+	retValue = LinkLayer_CheckStatus(pHandle);
+	if (retValue == 0)
+	{
+		debug_printf("LinkLayer_CheckStatus success\n");
+	}
+	else
+	{
+		debug_printf("LinkLayer_CheckStatus error\n");
+	}
+	debug_printf(
+			"interrupt to deal with poll timeout,timeoutSemaphore is %d\n");
 
-	up(&timeoutSemaphore);
-	debug_printf("interrupt to deal with poll timeout,timeoutSemaphore is %d\n",timeoutSemaphore);
-
-	//up(&gDspDpmOverSemaphore);
 	PCI_ClearDspInterrupt(g_pPcieBarReg);
 
 }
