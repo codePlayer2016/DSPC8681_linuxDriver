@@ -582,6 +582,7 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		stateCode =LinkLayer_CheckStatus(pLinkLayer,pParam->waitType);
 		if(stateCode==0){
 			down(&timeoutSemaphore);
+			copy_to_user((pParam->pBufStatus), &stateCode, sizeof(int));
 		}
 		break;
 	}
@@ -594,6 +595,7 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		if (stateCode == 0)
 		{
 			down(&timeoutSemaphore);
+			copy_to_user((pParam->pBufStatus), &stateCode, sizeof(int));
 		}
 		break;
 	}
@@ -631,7 +633,7 @@ static irqreturn_t ISR_handler(int irq, void *arg)
 	//cheak zone status
 
 	up(&timeoutSemaphore);
-	debug_printf("interrupt to deal with poll timeout,timeoutSemaphore is %d\n",&timeoutSemaphore);
+	debug_printf("interrupt to deal with poll timeout,timeoutSemaphore is %d\n",timeoutSemaphore);
 
 	//up(&gDspDpmOverSemaphore);
 	PCI_ClearDspInterrupt(g_pPcieBarReg);

@@ -174,16 +174,22 @@ int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle,
 
 	return (retValue);
 }
-int LinkLayer_CheckStatus(LinkLayerHandler *pHandle,LINKLAYER_IO_TYPE ioType){
+int LinkLayer_CheckStatus(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioType)
+{
 	int retValue = 1;
-	if (ioType == LINKLAYER_IO_READ){
-		if((pHandle->pRegisterTable->writeStatus) & PC_WAIT_WT ){
-			retValue=0;
+	if (ioType == LINKLAYER_IO_READ)
+	{
+		if ((pHandle->pRegisterTable->readStatus) & PC_WAIT_RD)
+		{
+			retValue = 0;
 		}
+
 	}
-	else{
-		if((pHandle->pRegisterTable->readStatus) & PC_WAIT_RD ){
-			retValue=0;
+	else
+	{
+		if ((pHandle->pRegisterTable->writeStatus) & PC_WAIT_WT)
+		{
+			retValue = 0;
 		}
 	}
 	return retValue;
