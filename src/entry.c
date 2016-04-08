@@ -527,7 +527,6 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		break;
 	}
-//////////////////////////////////////////////////////////////////////////
 		// trigger the interrupt to DSP,make the DSP to start DPM process the picture.
 	case DPU_IO_CMD_INTERRUPT:
 	{
@@ -573,17 +572,6 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	{
 		printk("wait the DSP trigger the host\n");
 		down(&gDspDpmOverSemaphore);
-//		interruptAndPollParam *pParam = (interruptAndPollParam *) arg;
-//		stateCode = LinkLayer_WaitDpmOver(pLinkLayer, pParam->pollTime);
-//		if (stateCode != 0)
-//		{
-//			debug_printf("LinkLayer_WaitDpmOver timeout: %x\n", stateCode);
-//		}
-//		else
-//		{
-//			debug_printf("linklayer WaitDpmOver finished\n");
-//		}
-//		copy_to_user((pParam->interruptAndPollResult), &stateCode, sizeof(int));
 		break;
 
 	}
@@ -606,7 +594,32 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		down(&gDspDpmOverSemaphore);
 		break;
 	}
-
+	case DPU_IO_CMD_CHANGEREG:
+	{
+		stateCode = LinkLayer_ChangeDpmReg(pLinkLayer);
+		if (stateCode != 0)
+		{
+			printk("LinkLayer_ChangeDpmReg failed: %x\n", stateCode);
+		}
+		else
+		{
+			printk("LinkLayer_ChangeDpmReg success\n");
+		}
+		break;
+	}
+	case DPU_IO_CMD_CLRINTERRUPT:
+	{
+		stateCode = LinkLayer_ClearInterrupt(pLinkLayer);
+		if (stateCode != 0)
+		{
+			printk("LinkLayer_ClearInterrupt failed: %x\n", stateCode);
+		}
+		else
+		{
+			printk("LinkLayer_ClearInterrupt success\n");
+		}
+		break;
+	}
 	default:
 	{
 		retValue = 0;

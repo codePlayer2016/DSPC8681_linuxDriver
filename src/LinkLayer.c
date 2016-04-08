@@ -179,7 +179,7 @@ int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle,
 }
 int LinkLayer_CheckStatus(LinkLayerHandler *pHandle)
 {
-	int retValue = 1;
+	int retValue = 0;
 	if (pHandle->pRegisterTable->writeStatus & PC_WAIT_WT)
 	{
 		up(&writeSemaphore);
@@ -192,8 +192,29 @@ int LinkLayer_CheckStatus(LinkLayerHandler *pHandle)
 	{
 		up(&gDspDpmOverSemaphore);
 		//clear reg
-		pHandle->pRegisterTable->dpmOverStatus=0;
+		pHandle->pRegisterTable->dpmOverControl= PC_WAIT_DPMCLR;
 	}
+	return retValue;
+}
+int LinkLayer_ChangeDpmReg(LinkLayerHandler *pHandle)
+{
+	int retValue = 0;
+	if (pHandle->pRegisterTable->dpmStartStatus & PC_DPM_CLR)
+	{
+		debug_printf("DSP have clear dpmstart ctl reg\n");
+		pHandle->pRegisterTable->dpmStartControl = PC_DPM_START;
+	}
+	else
+	{
+		retValue = -1;
+		debug_printf("DSP didn't clear dpmstart ctl reg\n");
+	}
+	return retValue;
+}
+int LinkLayer_ClearInterrupt(LinkLayerHandler *pHandle)
+{
+	int retValue=0;
+	pHandle->pRegisterTable->dpmOverControl=PC_WAIT_DPMCLR;
 	return retValue;
 }
 int LinkLayer_WaitDpmOver(LinkLayerHandler *pHandle, uint32_t pendtime)

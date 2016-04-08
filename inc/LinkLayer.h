@@ -28,12 +28,15 @@
 
 #define PC_RD_OVER		(0xaa000055U)
 #define PC_RD_BUSY		(0x55555555U)
+#define PC_DPM_START   (0x0505aa00U)
+#define PC_DPM_CLR   (0x0a0a5500U)
 // DSP-side write buffer status.
 #define DSP_WT_READY 	(0xaa000055U)
 #define DSP_WT_OVER 	(0x550000aaU)
 #define DSP_WT_BUSY		(0x55555555U)
 //dpm over flag
-#define PC_WAIT_DPMOVER ((0x00aa5500U))
+#define PC_WAIT_DPMOVER (0x00aa5500U)
+#define PC_WAIT_DPMCLR (0x0055aa00U)
 
 typedef enum __tagLINKLAYER_IO_TYPE
 {
@@ -52,7 +55,8 @@ typedef struct _tagLinkLayerRegisterTable
 	uint32_t getPicNumers;
 	uint32_t failPicNumers;
 	uint32_t dpmOverStatus;
-	uint32_t reserved0[0x1000 / 4 - 6];
+	uint32_t dpmStartStatus;
+	uint32_t reserved0[0x1000 / 4 - 7];
 
 	// control registers. (4k)
 	uint32_t DPUBootControl;
@@ -60,7 +64,8 @@ typedef struct _tagLinkLayerRegisterTable
 	uint32_t readControl;
 	uint32_t PC_urlNumsReg;
 	uint32_t dpmOverControl;
-	uint32_t reserved1[0x1000 / 4 - 5];
+	uint32_t dpmStartControl;
+	uint32_t reserved1[0x1000 / 4 - 6];
 } LinkLayerRegisterTable;
 #if 0
 typedef struct _tagRegisterTable
@@ -103,7 +108,10 @@ int LinkLayer_Confirm(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioType);
 int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle,
 		LINKLAYER_IO_TYPE ioType);
 int LinkLayer_CheckStatus(LinkLayerHandler *pHandle);
+int LinkLayer_ChangeDpmReg(LinkLayerHandler *pHandle);
+int LinkLayer_ClearInterrupt(LinkLayerHandler *pHandle);
 int LinkLayer_WaitDpmOver(LinkLayerHandler *pHandle,uint32_t pendtime);
+
 
 
 #endif // _INC_LINKLAYER_H_
