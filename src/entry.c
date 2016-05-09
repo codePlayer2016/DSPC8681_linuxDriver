@@ -454,6 +454,9 @@ int DPU_mmap(struct file *filp, struct vm_area_struct *vma)
 	//debug_printf("phyAddrFrameNO=0x%x\n", phyAddrFrameNO);
 	phyAddrFrameNO = (phyAddrFrameNO >> PAGE_SHIFT);
 	rangeLength_vma = (vma->vm_end - vma->vm_start);
+
+	debug_printf("mmap length=0x%x\n", rangeLength_vma);
+
 	stateCode = remap_pfn_range(vma, vma->vm_start, phyAddrFrameNO,
 			rangeLength_vma, PAGE_SHARED);
 	if (stateCode < 0)

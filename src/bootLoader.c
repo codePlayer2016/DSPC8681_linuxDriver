@@ -297,8 +297,13 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
 			&DMAPhyAddr, GFP_KERNEL);
 
 // because of PCIE Outbound windows size is 1M.
-	alignPhyAddr = ((DMAPhyAddr + 0x100000) & (~0x100000));
+	alignPhyAddr = (DMAPhyAddr  & 0xfff00000);
 	debug_printf("the dma phy addr is 0x%x\n", alignPhyAddr);
+
+	alignPhyAddr = ((DMAPhyAddr + 0x100000) & (~0x100000));
+	debug_printf("the dma phy1 addr is 0x%x\n", alignPhyAddr);
+
+
 	memOffset = (alignPhyAddr - DMAPhyAddr);
 	addrMap2DSPPCIE = (uint32_t)(DMAVirAddr + memOffset);
 
@@ -311,7 +316,7 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
 	pPutDSPImgZone = (uint32_t *) (addrMap2DSPPCIE + registerLength);
 
 	// TODO: the dspMemoryMap ,the last parameter should be variant.
-	retMapVal = dspMemoryMap(regVirt, alignPhyAddr, 0x200000);
+	retMapVal = dspMemoryMap(regVirt, alignPhyAddr, 0x400000);
 	// TODO process the error.
 	if(retMapVal!=0)
 	{}
