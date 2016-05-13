@@ -299,9 +299,9 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
 // because of PCIE Outbound windows size is 1M.
 	alignPhyAddr = (DMAPhyAddr  & 0xfff00000);
 	debug_printf("the dma phy addr is 0x%x\n", alignPhyAddr);
-
-	alignPhyAddr = ((DMAPhyAddr + 0x100000) & (~0x100000));
-	debug_printf("the dma phy1 addr is 0x%x\n", alignPhyAddr);
+//
+//	alignPhyAddr = ((DMAPhyAddr + 0x100000) & (~0x100000));
+//	debug_printf("the dma phy1 addr is 0x%x\n", alignPhyAddr);
 
 
 	memOffset = (alignPhyAddr - DMAPhyAddr);

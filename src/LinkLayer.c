@@ -97,11 +97,23 @@ int LinkLayer_WaitBufferReady(LinkLayerHandler *pHandle,
 		pBufferStatus = (uint32_t *) &(pHandle->pRegisterTable->readStatus);
 		readyValue = PC_WAIT_RD;
 	}
-	else
+	if (ioType == LINKLAYER_IO_WRITE)
 	{
 		// PC wait dsp read zone empty.so PC can write.
 		pBufferStatus = (uint32_t *) &(pHandle->pRegisterTable->writeStatus);
 		readyValue = PC_WAIT_WT;
+	}
+	if (ioType == LINKLAYER_IO_START)
+	{
+		// wait dsp write over.PC can read.
+		pBufferStatus = (uint32_t *) &(pHandle->pRegisterTable->dpmStartStatus);
+		readyValue = PC_DPM_STARTSTATUS;
+	}
+	if (ioType == LINKLAYER_IO_OVER)
+	{
+		// PC wait dsp read zone empty.so PC can write.
+		pBufferStatus = (uint32_t *) &(pHandle->pRegisterTable->dpmOverStatus);
+		readyValue = PC_DPM_OVERSTATUS;
 	}
 	retValue = pollValue(pBufferStatus, readyValue, pendtime);
 	if (retValue == 0)
@@ -110,20 +122,36 @@ int LinkLayer_WaitBufferReady(LinkLayerHandler *pHandle,
 		{
 			debug_printf("read buffer ready\n");
 		}
-		else
+		if (ioType == LINKLAYER_IO_WRITE)
 		{
 			debug_printf("write buffer ready\n");
+		}
+		if (ioType == LINKLAYER_IO_START)
+		{
+			debug_printf("DPM start ready\n");
+		}
+		if (ioType == LINKLAYER_IO_OVER)
+		{
+			debug_printf("dpm over\n");
 		}
 	}
 	else
 	{
 		if (ioType == LINKLAYER_IO_READ)
 		{
-			debug_printf("wait read buffer ready time out\n");
+			debug_printf("read buffer ready timeout\n");
 		}
-		else
+		if (ioType == LINKLAYER_IO_WRITE)
 		{
-			debug_printf("wait write buffer ready time out\n");
+			debug_printf("write buffer ready timeout\n");
+		}
+		if (ioType == LINKLAYER_IO_START)
+		{
+			debug_printf("DPM start ready timeout\n");
+		}
+		if (ioType == LINKLAYER_IO_OVER)
+		{
+			debug_printf("dpm over timeout\n");
 		}
 	}
 	return (retValue);
@@ -162,6 +190,8 @@ int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle,
 		pHandle->pRegisterTable->writeControl = PC_WT_OVER;
 		debug_printf("change the writestatus in the dsp,writeNumer=%x\n",
 				(pHandle->pRegisterTable->writeControl));
+		//5.13
+		pHandle->pRegisterTable->dpmStartControl = 0x00000000;
 	}
 	if (ioType == LINKLAYER_IO_READ_FIN)
 	{
@@ -173,75 +203,50 @@ int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle,
 		// PC set the register so dsp can't read.polling
 		// TODO: change the PC_WT_READY to a meaning name.
 		pHandle->pRegisterTable->writeControl = PC_WT_READY;
+
+	}
+	if (ioType == LINKLAYER_IO_START)
+	{
+		// PC read the DSP process result. and dsp need to polling.
+		debug_printf("@@@@@@@@@@set pHandle->pRegisterTable->dpmStartControl\n");
+		pHandle->pRegisterTable->dpmStartControl = PC_DPM_STARTCLR;
+	}
+	if (ioType == LINKLAYER_IO_OVER)
+	{
+		// PC set the register so dsp can't read.polling
+		// TODO: change the PC_WT_READY to a meaning name.
+		debug_printf("pHandle->pRegisterTable->dpmOverControl %x\n",
+				pHandle->pRegisterTable->dpmOverControl);
+		pHandle->pRegisterTable->dpmOverControl = PC_DPM_OVERCLR;
+		//2016.5.12
+		//pHandle->pRegisterTable->dpmStartControl = 0x00000000;
 	}
 
 	return (retValue);
 }
+
 int LinkLayer_CheckStatus(LinkLayerHandler *pHandle)
 {
 	int retValue = 0;
-	if (pHandle->pRegisterTable->writeStatus & PC_WAIT_WT)
+
+	if((pHandle->pRegisterTable->writeStatus) & PC_WAIT_WT)
 	{
 		up(&writeSemaphore);
 	}
-	if (pHandle->pRegisterTable->readStatus & PC_WAIT_RD)
+	if((pHandle->pRegisterTable->readStatus)&PC_WAIT_RD)
+
 	{
 		up(&readSemaphore);
 	}
-	if (pHandle->pRegisterTable->dpmOverStatus & PC_WAIT_DPMOVER)
+	if((pHandle->pRegisterTable->dpmOverStatus)&PC_DPM_OVERSTATUS)
+
 	{
+		debug_printf("%%%%%%%%%gDspDpmOverSemaphore\n");
 		up(&gDspDpmOverSemaphore);
 		//clear reg
-		pHandle->pRegisterTable->dpmOverControl= PC_WAIT_DPMCLR;
+		pHandle->pRegisterTable->dpmOverControl |= 0x00000000;
 	}
+
 	return retValue;
-}
-int LinkLayer_ChangeDpmReg(LinkLayerHandler *pHandle)
-{
-	int retValue = 0;
-	if (pHandle->pRegisterTable->dpmStartStatus & PC_DPM_CLR)
-	{
-		debug_printf("DSP have clear dpmstart ctl reg\n");
-		pHandle->pRegisterTable->dpmStartControl = PC_DPM_START;
-	}
-	else
-	{
-		retValue = -1;
-		debug_printf("DSP didn't clear dpmstart ctl reg\n");
-	}
-	return retValue;
-}
-int LinkLayer_ClearInterrupt(LinkLayerHandler *pHandle)
-{
-	int retValue=0;
-	pHandle->pRegisterTable->dpmOverControl=PC_WAIT_DPMCLR;
-	return retValue;
-}
-int LinkLayer_WaitDpmOver(LinkLayerHandler *pHandle, uint32_t pendtime)
-{
-	int retValue = 1;
-	uint32_t *pBufferStatus = NULL;
-	uint32_t readyValue = 0;
-
-	// PC wait dsp read zone empty.so PC can write.
-	pBufferStatus = (uint32_t *) &(pHandle->pRegisterTable->dpmOverStatus);
-	readyValue = PC_WAIT_DPMOVER;
-
-	debug_printf("111111\n");
-	retValue = pollValue(pBufferStatus, readyValue, pendtime);
-	debug_printf("22222\n");
-	if (retValue == 0)
-	{
-
-		debug_printf("DPM OVER\n");
-
-	}
-	else
-	{
-		debug_printf("wait DPM OVER time out\n");
-
-	}
-	debug_printf("33333\n");
-	return (retValue);
 }
 

@@ -28,22 +28,26 @@
 
 #define PC_RD_OVER		(0xaa000055U)
 #define PC_RD_BUSY		(0x55555555U)
-#define PC_DPM_START   (0x0505aa00U)
-#define PC_DPM_CLR   (0x0a0a5500U)
+
 // DSP-side write buffer status.
 #define DSP_WT_READY 	(0xaa000055U)
 #define DSP_WT_OVER 	(0x550000aaU)
 #define DSP_WT_BUSY		(0x55555555U)
-//dpm over flag
-#define PC_WAIT_DPMOVER (0x00aa5500U)
-#define PC_WAIT_DPMCLR (0x0055aa00U)
+//dpm start and over flag
+#define PC_DPM_STARTSTATUS   (0x0505aa00U)
+#define PC_DPM_STARTCLR   (0x0a0a5500U)
+
+#define PC_DPM_OVERSTATUS (0x00a5a500U)
+#define PC_DPM_OVERCLR (0x005a5a00U)
 
 typedef enum __tagLINKLAYER_IO_TYPE
 {
 	LINKLAYER_IO_READ = 0,
 	LINKLAYER_IO_WRITE = 1,
 	LINKLAYER_IO_READ_FIN = 2,
-	LINKLAYER_IO_WRITE_FIN = 3
+	LINKLAYER_IO_WRITE_FIN = 3,
+	LINKLAYER_IO_START = 4,
+	LINKLAYER_IO_OVER = 5
 } LINKLAYER_IO_TYPE;
 // TODO: merge the structure in LinkLayer.h and common.h
 typedef struct _tagLinkLayerRegisterTable
