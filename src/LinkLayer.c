@@ -229,16 +229,17 @@ int LinkLayer_CheckStatus(LinkLayerHandler *pHandle)
 {
 	int retValue = 0;
 
+	// dsp readctl is set init means:dsp receive buffer is empty. so pc can write to send buffer.
 	if((pHandle->pRegisterTable->writeStatus) & PC_WAIT_WT)
 	{
 		up(&writeSemaphore);
 	}
-	if((pHandle->pRegisterTable->readStatus)&PC_WAIT_RD)
+	if((pHandle->pRegisterTable->readStatus) & PC_WAIT_RD)
 
 	{
 		up(&readSemaphore);
 	}
-	if((pHandle->pRegisterTable->dpmOverStatus)&PC_DPM_OVERSTATUS)
+	if((pHandle->pRegisterTable->dpmOverStatus) & PC_DPM_OVERSTATUS)
 
 	{
 		debug_printf("%%%%%%%%%gDspDpmOverSemaphore\n");
