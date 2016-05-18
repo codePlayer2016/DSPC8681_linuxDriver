@@ -406,47 +406,6 @@ int DPU_mmap(struct file *filp, struct vm_area_struct *vma)
 	uint32_t rangeLength_vma;
 	intptr_t *pAlignDMAVirtAddr =
 			((intptr_t *) (((LinkLayerHandler *) (filp->private_data))->pRegisterTable));
-#if 0
-// remap 4k readonly
-	phyAddrFrameNO = virt_to_phys(pAlignDMAVirtAddr);
-	debug_printf("phyAddrFrameNO=0x%x\n", phyAddrFrameNO);
-	phyAddrFrameNO =
-	((LinkLayerHandler *) (filp->private_data))->pRegisterTable->registerPhyAddrInPc;
-	debug_printf("phyAddrFrameNO=0x%x\n", phyAddrFrameNO);
-	phyAddrFrameNO = (phyAddrFrameNO >> PAGE_SHIFT);
-	rangeLength_vma = MMAP_PAGE_SIZE;
-	stateCode = remap_pfn_range(vma, vma->vm_start, phyAddrFrameNO,
-			rangeLength_vma, PAGE_READONLY);
-	if (stateCode < 0)
-	{
-		debug_printf("lhs remap register page  error\n");
-	}
-	else
-	{
-	}
-
-// remap 1M-4K
-	if (stateCode >= 0)
-	{
-		vma->vm_start += MMAP_PAGE_SIZE;
-		rangeLength_vma = (vma->vm_end - vma->vm_start - MMAP_PAGE_SIZE);
-		phyAddrFrameNO = virt_to_phys(pAlignDMAVirtAddr + MMAP_PAGE_SIZE);
-		phyAddrFrameNO = (phyAddrFrameNO >> PAGE_SHIFT);
-		stateCode = remap_pfn_range(vma, vma->vm_start, phyAddrFrameNO,
-				rangeLength_vma, PAGE_SHARED);
-		if (stateCode < 0)
-		{
-			debug_printf("lhs remap data pages error\n");
-		}
-		else
-		{
-		}
-	}
-	else
-	{
-	}
-	retValue = stateCode;
-#endif
 	phyAddrFrameNO = virt_to_phys(pAlignDMAVirtAddr);
 	debug_printf("phyAddrFrameNO=0x%x\n", phyAddrFrameNO);
 	//phyAddrFrameNO =
@@ -632,13 +591,12 @@ static irqreturn_t ISR_handler(int irq, void *arg)
 	uint32_t status;
 	uint32_t retValue;
 	debug_printf("ISR_handler function irq is %d\n", irq);
-	//cyx add
+
 	status = HAL_CheckPciInterrupt(g_pPcieBarReg);
 	if (status == 1)
 	{
-		printk("cyx receive interrupt from dsp222222\n");
+		printk("cyx receive interrupt from dsp\n");
 	}
-	debug_printf("ISR_handler function after HAL_CheckPciInterrupt\n");
 	//cheak zone status
 	retValue = LinkLayer_CheckStatus(pHandle);
 	if (retValue == 0)
@@ -649,8 +607,7 @@ static irqreturn_t ISR_handler(int irq, void *arg)
 	{
 		debug_printf("LinkLayer_CheckStatus error\n");
 	}
-	debug_printf(
-			"interrupt to deal with poll timeout,timeoutSemaphore is %d\n");
+
 
 	PCI_ClearDspInterrupt(g_pPcieBarReg);
 
