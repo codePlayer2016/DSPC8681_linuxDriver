@@ -40,6 +40,8 @@
 #define PC_DPM_OVERSTATUS (0x00a5a500U)
 #define PC_DPM_OVERCLR (0x005a5a00U)
 
+#define PC_DPM_ALLOVER (0x00005a5aU)
+
 typedef enum __tagLINKLAYER_IO_TYPE
 {
 	LINKLAYER_IO_READ = 0,
@@ -60,7 +62,8 @@ typedef struct _tagLinkLayerRegisterTable
 	uint32_t failPicNumers;
 	uint32_t dpmOverStatus;
 	uint32_t dpmStartStatus;
-	uint32_t reserved0[0x1000 / 4 - 7];
+	uint32_t dpmAllOverStatus;
+	uint32_t reserved0[0x1000 / 4 - 8];
 
 	// control registers. (4k)
 	uint32_t DPUBootControl;
@@ -115,7 +118,7 @@ int LinkLayer_CheckStatus(LinkLayerHandler *pHandle);
 int LinkLayer_ChangeDpmReg(LinkLayerHandler *pHandle);
 int LinkLayer_ClearInterrupt(LinkLayerHandler *pHandle);
 int LinkLayer_WaitDpmOver(LinkLayerHandler *pHandle,uint32_t pendtime);
-
+int LinkLayer_CheckDpmStatus(LinkLayerHandler *pHandle);
 
 
 #endif // _INC_LINKLAYER_H_

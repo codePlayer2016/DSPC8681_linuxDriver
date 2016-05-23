@@ -566,6 +566,23 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		}
 		break;
 	}
+	case DPU_IO_CMD_CHECKDPMALLOVER:
+	{
+		DPUDriver_WaitBufferReadyParam *pParam =
+						(DPUDriver_WaitBufferReadyParam *) arg;
+		stateCode = LinkLayer_CheckDpmStatus(pLinkLayer);
+		if (stateCode != 0)
+		{
+			debug_printf("LinkLayer_CheckDpmStatus timeout: %x\n", stateCode);
+		}
+		else
+		{
+			debug_printf("LinkLayer_CheckDpmStatus finished: %x\n", stateCode);
+		}
+		copy_to_user((pParam->pBufStatus), &stateCode, sizeof(int));
+		break;
+
+	}
 	default:
 	{
 		retValue = 0;
@@ -607,7 +624,6 @@ static irqreturn_t ISR_handler(int irq, void *arg)
 	{
 		debug_printf("LinkLayer_CheckStatus error\n");
 	}
-
 
 	PCI_ClearDspInterrupt(g_pPcieBarReg);
 

@@ -208,18 +208,17 @@ int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle,
 	if (ioType == LINKLAYER_IO_START)
 	{
 		// PC read the DSP process result. and dsp need to polling.
-		debug_printf("@@@@@@@@@@set pHandle->pRegisterTable->dpmStartControl\n");
 		pHandle->pRegisterTable->dpmStartControl = PC_DPM_STARTCLR;
 	}
 	if (ioType == LINKLAYER_IO_OVER)
 	{
 		// PC set the register so dsp can't read.polling
 		// TODO: change the PC_WT_READY to a meaning name.
-		debug_printf("pHandle->pRegisterTable->dpmOverControl %x\n",
+		debug_printf("%%%%%%pHandle->pRegisterTable->dpmOverControl %x\n",
 				pHandle->pRegisterTable->dpmOverControl);
 		pHandle->pRegisterTable->dpmOverControl = PC_DPM_OVERCLR;
-		//2016.5.12
-		//pHandle->pRegisterTable->dpmStartControl = 0x00000000;
+		//2016.5.20
+		pHandle->pRegisterTable->dpmStartControl = 0x00000000;
 	}
 
 	return (retValue);
@@ -242,12 +241,21 @@ int LinkLayer_CheckStatus(LinkLayerHandler *pHandle)
 	if((pHandle->pRegisterTable->dpmOverStatus) & PC_DPM_OVERSTATUS)
 
 	{
-		debug_printf("%%%%%%%%%gDspDpmOverSemaphore\n");
 		up(&gDspDpmOverSemaphore);
 		//clear reg
 		pHandle->pRegisterTable->dpmOverControl |= 0x00000000;
 	}
 
 	return retValue;
+}
+int LinkLayer_CheckDpmStatus(LinkLayerHandler *pHandle)
+{
+	if((pHandle->pRegisterTable->dpmAllOverStatus) & PC_DPM_ALLOVER){
+		debug_printf("pc have check dpm all over\n");
+		return 0;
+	}
+	else{
+		return -1;
+	}
 }
 
