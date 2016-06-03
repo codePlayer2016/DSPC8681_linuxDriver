@@ -54,30 +54,6 @@ int LinkLayer_Open(LinkLayerHandler **ppHandle, struct pci_dev *pPciDev,
 		return (retValue);
 	}
 
-// polling the
-#if 0
-	// TODO: syn with the DSP alorgrithm	and there need some code in the dsp code[alogrithm]
-
-	if (retPollVal == 0)
-	{
-		retPollVal = pollValue(
-				(uint32_t *) (pRegisterTable->xxxx), 0xxxxxxxxx,
-				0x7fffffff);
-		if (retPollVal == 0)
-		{
-			printk("LHS in %s DSP get DSPImg successful \n", __func__);
-		}
-		else
-		{
-			printk("LHS in %s DSP get DSPImg failed:DSPGetCodeStatus=%x\n",
-					__func__,
-					*(uint32_t *) (pRegisterTable->DSPCodeCrcStatus));
-		}
-	}
-	else
-	{
-	}
-#endif
 	debug_printf("LinkLayer_Open is successful\n");
 	return (retValue);
 }
@@ -224,37 +200,56 @@ int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle,
 	return (retValue);
 }
 
-int LinkLayer_CheckStatus(LinkLayerHandler *pHandle)
+int LinkLayer_CheckStatus(LinkLayerRegisterTable *gpRegisterTable)
 {
 	int retValue = 0;
 
 	// dsp readctl is set init means:dsp receive buffer is empty. so pc can write to send buffer.
-	if((pHandle->pRegisterTable->writeStatus) & PC_WAIT_WT)
+	if ((gpRegisterTable->writeStatus) & PC_WAIT_WT)
 	{
 		up(&writeSemaphore);
 	}
-	if((pHandle->pRegisterTable->readStatus) & PC_WAIT_RD)
+	if ((gpRegisterTable->readStatus) & PC_WAIT_RD)
 
 	{
 		up(&readSemaphore);
 	}
-	if((pHandle->pRegisterTable->dpmOverStatus) & PC_DPM_OVERSTATUS)
+	if ((gpRegisterTable->dpmOverStatus) & PC_DPM_OVERSTATUS)
 
 	{
 		up(&gDspDpmOverSemaphore);
 		//clear reg
-		pHandle->pRegisterTable->dpmOverControl |= 0x00000000;
+		gpRegisterTable->dpmOverControl |= 0x00000000;
 	}
+
+//	if ((pHandle->pRegisterTable->writeStatus) & PC_WAIT_WT)
+//	{
+//		up(&writeSemaphore);
+//	}
+//	if ((pHandle->pRegisterTable->readStatus) & PC_WAIT_RD)
+//
+//	{
+//		up(&readSemaphore);
+//	}
+//	if ((pHandle->pRegisterTable->dpmOverStatus) & PC_DPM_OVERSTATUS)
+//
+//	{
+//		up(&gDspDpmOverSemaphore);
+//		//clear reg
+//		pHandle->pRegisterTable->dpmOverControl |= 0x00000000;
+//	}
 
 	return retValue;
 }
 int LinkLayer_CheckDpmStatus(LinkLayerHandler *pHandle)
 {
-	if((pHandle->pRegisterTable->dpmAllOverStatus) & PC_DPM_ALLOVER){
+	if ((pHandle->pRegisterTable->dpmAllOverStatus) & PC_DPM_ALLOVER)
+	{
 		debug_printf("pc have check dpm all over\n");
 		return 0;
 	}
-	else{
+	else
+	{
 		return -1;
 	}
 }

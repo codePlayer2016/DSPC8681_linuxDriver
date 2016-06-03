@@ -13,6 +13,7 @@
 #include "DPURegs.h"
 #include "DSP_TBL_6678.h"
 #include "dspCodeImg.h"
+#include "LinkLayer.h"
 
 #define OB_MASK_ONE 	(0xFFF00000)  	// 20-31
 #define OB_MASK_TWO 	(0xFFE00000)  	// 21-31
@@ -20,7 +21,7 @@
 #define OB_MASK_EIGHT 	(0xFF800000)	// 23-31
 
 #define DMA_TRANSFER_SIZE            (0x400000U)
-registerTable *gpRegisterTable = NULL;
+LinkLayerRegisterTable *gpRegisterTable = NULL;
 //
 // small tools.
 //
@@ -278,7 +279,8 @@ int dspMemoryMap(uint32_t *pRegVirt, uint32_t pcAddr, uint32_t size)
 int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
 {
 
-	registerTable *pRegisterTable = NULL;
+	//registerTable *pRegisterTable = NULL;
+	LinkLayerRegisterTable *pRegisterTable = NULL;
 	uint8_t *DMAVirAddr = NULL;
 	dma_addr_t DMAPhyAddr = 0;
 	uint32_t *pPutDSPImgZone = 0;
@@ -307,7 +309,7 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
 	memOffset = (alignPhyAddr - DMAPhyAddr);
 	addrMap2DSPPCIE = (uint32_t)(DMAVirAddr + memOffset);
 
-	pRegisterTable = (registerTable *) addrMap2DSPPCIE;
+	pRegisterTable = (LinkLayerRegisterTable *) addrMap2DSPPCIE;
 	gpRegisterTable = pRegisterTable;
 //pRegisterTable->registerPhyAddrInPc = alignPhyAddr;
 
@@ -358,7 +360,7 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
 	if (retPollVal == 0)
 	{
 		retPollVal = pollValue(&(pRegisterTable->DPUBootStatus),
-		DSP_GETCODE_FINISH, 0x7fffffff);
+		DSP_GETCODE_FINISH, 0xffffffff);
 		if (retPollVal == 0)
 		{
 			debug_printf("DSP get DSPImg successful \n");
@@ -379,7 +381,7 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
 	if (retPollVal == 0)
 	{
 		retPollVal = pollValue(&(pRegisterTable->DPUBootStatus),
-		DSP_CRCCHECK_SUCCESSFUL, 0x00ffffff);
+		DSP_CRCCHECK_SUCCESSFUL, 0xffffffff);
 		if (retPollVal == 0)
 		{
 			debug_printf("DSP check crc successful \n");
@@ -387,6 +389,7 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
 		else
 		{
 			retValue = -3;
+			debug_printf("DSP check crc failed \n");
 			debug_printf("failed DPUBootStatus=%x\n",
 					(pRegisterTable->DPUBootStatus));
 			return (retValue);
@@ -400,7 +403,7 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
 	if (retPollVal == 0)
 	{
 		retPollVal = pollValue(&(pRegisterTable->DPUBootStatus),
-		DSP_GETENTRY_FINISH, 0x00ffffff);
+		DSP_GETENTRY_FINISH, 0xffffffff);
 		if (retPollVal == 0)
 		{
 			debug_printf("DSP jump to the dpm code successful \n");

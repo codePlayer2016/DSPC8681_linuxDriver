@@ -113,6 +113,7 @@ int32_t gHostPciIrqNo = 0;
 //pcieBarReg_t pPcieBarReginit;
 //pcieBarReg_t *g_pPcieBarReg = &pPcieBarReginit;
 pcieBarReg_t *g_pPcieBarReg = NULL;
+extern LinkLayerRegisterTable *gpRegisterTable;
 static int DPU_probe(struct pci_dev *pci_dev,
 		const struct pci_device_id *pci_id);
 static int DPU_open(struct inode *node, struct file *file);
@@ -615,7 +616,7 @@ static irqreturn_t ISR_handler(int irq, void *arg)
 		printk("cyx receive interrupt from dsp\n");
 	}
 	//cheak zone status
-	retValue = LinkLayer_CheckStatus(pHandle);
+	retValue = LinkLayer_CheckStatus(gpRegisterTable);
 	if (retValue == 0)
 	{
 		debug_printf("LinkLayer_CheckStatus success\n");

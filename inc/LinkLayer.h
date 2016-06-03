@@ -70,27 +70,12 @@ typedef struct _tagLinkLayerRegisterTable
 	uint32_t writeControl;
 	uint32_t readControl;
 	uint32_t PC_urlNumsReg;
+	uint32_t modelType;//1:motor 2:car 3:person
 	uint32_t dpmOverControl;
 	uint32_t dpmStartControl;
 	uint32_t reserved1[0x1000 / 4 - 6];
 } LinkLayerRegisterTable;
-#if 0
-typedef struct _tagRegisterTable
-{
-	// status registers. (4k)
-	uint32_t DPUBootStatus;
-	uint32_t writeStatus;
-	uint32_t readStatus;
-	uint32_t registerPhyAddrInPc;
-	uint32_t reserved0[0x1000 / 4 - 4];
 
-	// control registers. (4k)
-	uint32_t DPUBootControl;
-	uint32_t writeControl;
-	uint32_t readControl;
-	uint32_t reserved1[0x1000 / 4 - 3];
-}registerTable;
-#endif
 typedef struct _tagLinkLayerHandler
 {
 	LinkLayerRegisterTable *pRegisterTable;
@@ -114,7 +99,7 @@ int LinkLayer_Confirm(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioType);
 
 int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle,
 		LINKLAYER_IO_TYPE ioType);
-int LinkLayer_CheckStatus(LinkLayerHandler *pHandle);
+int LinkLayer_CheckStatus(LinkLayerRegisterTable *gpRegisterTable);
 int LinkLayer_ChangeDpmReg(LinkLayerHandler *pHandle);
 int LinkLayer_ClearInterrupt(LinkLayerHandler *pHandle);
 int LinkLayer_WaitDpmOver(LinkLayerHandler *pHandle,uint32_t pendtime);

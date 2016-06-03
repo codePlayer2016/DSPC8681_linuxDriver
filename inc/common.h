@@ -42,7 +42,7 @@ typedef struct __tagPcieBarReg
 } pcieBarReg_t;
 
 // TODO: rename the element:PC_bootStatusReg,PC_writeStatusReg...,PC_bootCtlReg.
-
+/*
 typedef struct _tagRegisterTable
 {
 	// status registers. (4k)
@@ -60,7 +60,7 @@ typedef struct _tagRegisterTable
 	uint32_t PC_urlNumsReg;
 	uint32_t reserved1[0x1000 / 4 - 4];
 } registerTable;
-
+*/
 uint32_t byteTo32bits(uint8_t *pDspCode);
 
 int pollValue(uint32_t *pAddress, uint32_t pollVal, uint32_t maxPollCount);
