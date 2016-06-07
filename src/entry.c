@@ -109,6 +109,12 @@ struct pci_dev *g_pPcieDev = NULL;
 //cyx add, for the using of interrupt+poll
 LinkLayerHandler *pHandle = NULL;
 
+//cyx 20160607
+pcieDevNum_t pcieDevNum;
+struct cdev * pPcieCdev = NULL;
+extern dma_addr_t DMAPhyAddr;
+extern uint8_t *DMAVirAddr;
+
 int32_t gHostPciIrqNo = 0;
 //pcieBarReg_t pPcieBarReginit;
 //pcieBarReg_t *g_pPcieBarReg = &pPcieBarReginit;
@@ -131,8 +137,8 @@ static struct pci_driver DPU_pci_driver =
 
 int init_module(void)
 {
-	struct cdev * pPcieCdev = NULL;
-	pcieDevNum_t pcieDevNum;
+	//struct cdev * pPcieCdev = NULL;
+	//pcieDevNum_t pcieDevNum;
 
 	int retValue = 0;
 	uint32_t dummy = 0;
@@ -271,6 +277,12 @@ void cleanup_module()
 		resource_size_t ddrLen = pPcieBarReg->ddrLen;
 		uint32_t dummy = 0;
 		int32_t irqNo = pPcieDev->irq;
+		//cyx add 20160607
+		kfree(pPcieBarReg);
+		unregister_chrdev_region(pcieDevNum.devnum,1);
+		cdev_del(pPcieCdev);
+		dma_free_coherent(&pPcieDev->dev, DMA_TRANSFER_SIZE,DMAVirAddr,DMAPhyAddr);
+
 		PCI_DisableDspInterrupt(pPcieBarReg);
 		/* ---------------------------------------------------------------------
 		 * Unmap baseRegs region & release the reg region.

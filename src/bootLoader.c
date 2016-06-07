@@ -22,6 +22,9 @@
 
 #define DMA_TRANSFER_SIZE            (0x400000U)
 LinkLayerRegisterTable *gpRegisterTable = NULL;
+//cyx 20160607
+uint8_t *DMAVirAddr = NULL;
+dma_addr_t DMAPhyAddr = 0;
 //
 // small tools.
 //
@@ -281,8 +284,8 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
 
 	//registerTable *pRegisterTable = NULL;
 	LinkLayerRegisterTable *pRegisterTable = NULL;
-	uint8_t *DMAVirAddr = NULL;
-	dma_addr_t DMAPhyAddr = 0;
+//	uint8_t *DMAVirAddr = NULL;
+//	dma_addr_t DMAPhyAddr = 0;
 	uint32_t *pPutDSPImgZone = 0;
 	uint32_t *regVirt = pPcieBarReg->regVirt;
 	int retValue = 0;
