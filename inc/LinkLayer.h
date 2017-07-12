@@ -56,6 +56,8 @@ typedef struct _tagLinkLayerRegisterTable
 {
 	// status registers. (4k)
 	uint32_t DPUBootStatus;
+	uint32_t SetMultiCoreBootStatus;
+	uint32_t MultiCoreBootStatus;
 	uint32_t writeStatus;
 	uint32_t readStatus;
 	uint32_t getPicNumers;
@@ -63,7 +65,7 @@ typedef struct _tagLinkLayerRegisterTable
 	uint32_t dpmOverStatus;
 	uint32_t dpmStartStatus;
 	uint32_t dpmAllOverStatus;
-	uint32_t reserved0[0x1000 / 4 - 8];
+	uint32_t reserved0[0x1000 / 4 - 10];
 
 	// control registers. (4k)
 	uint32_t DPUBootControl;

@@ -26,7 +26,10 @@ typedef struct __tagPcieDevNum
 	unsigned int count;
 } pcieDevNum_t;
 
-int PCI_FindPciDevices(struct pci_dev **pPcieDev, int MaxCount);
+int PCI_FindPciDevices(struct pci_dev ** pPcieDev, int *pDevCount);
+//CYX
+//int PCI_DevicesInit(struct pci_dev **pPcieDev, int pciCount,int index);
+
 int PCI_readBAR(struct pci_dev *pPcieDev, pcieBarReg_t *pPcieBarReg);
 int PCI_setMaster(struct pci_dev *pPcieDev);
 void PCI_EnableDspInterrupt(pcieBarReg_t *pPcieDevReg);

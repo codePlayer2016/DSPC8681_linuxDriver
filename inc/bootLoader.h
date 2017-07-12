@@ -24,6 +24,9 @@
 #define DSP_RUN_READY			(0x00010000U)
 #define DSP_RUN_FAIL			(0x00000000U)
 
+//CYX
+#define DSP_TEST_SET           (0x00100000U)
+
 // the PC_PushCodeStatus Register value range.
 #define PC_PUSHCODE_FINISH      (0x00000011U)
 #define PC_PUSHCODE_FAIL		(0x00000000U)
@@ -33,6 +36,6 @@
 
 
 
-int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg);
+int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg,int index);
 
 #endif /* INC_BOOTLOADER_H_ */

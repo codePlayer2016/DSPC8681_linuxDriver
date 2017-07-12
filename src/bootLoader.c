@@ -11,7 +11,11 @@
 #include "common.h"
 #include "bootLoader.h"
 #include "DPURegs.h"
-#include "DSP_TBL_6678.h"
+//#include "DSP_TBL_6678.h"
+#include "DSP_TBL_6678_U0.h"
+#include "DSP_TBL_6678_U1.h"
+#include "DSP_TBL_6678_U2.h"
+#include "DSP_TBL_6678_U3.h"
 #include "dspCodeImg.h"
 #include "LinkLayer.h"
 
@@ -19,12 +23,10 @@
 #define OB_MASK_TWO 	(0xFFE00000)  	// 21-31
 #define OB_MASK_FOUR 	(0xFFC00000) 	// 22-31
 #define OB_MASK_EIGHT 	(0xFF800000)	// 23-31
-
 #define DMA_TRANSFER_SIZE            (0x400000U)
-LinkLayerRegisterTable *gpRegisterTable = NULL;
+//LinkLayerRegisterTable *gpRegisterTable = NULL;
 //cyx 20160607
-uint8_t *DMAVirAddr = NULL;
-dma_addr_t DMAPhyAddr = 0;
+
 //
 // small tools.
 //
@@ -45,6 +47,7 @@ uint32_t writeDSPMemory(pcieBarReg_t *pPcieBarReg, uint32_t coreNum,
 		return 0;
 	}
 
+	//debug_printf("coreNum=%d\n,memVirt=%x\n",coreNum,memVirt);
 	switch (coreNum)
 	{
 	case 0:
@@ -57,8 +60,8 @@ uint32_t writeDSPMemory(pcieBarReg_t *pPcieBarReg, uint32_t coreNum,
 	case 7:
 	{
 		dspMemAddr &= 0x00FFFFFF;
-		tempReg = ioread32(regVirt + IB_OFFSET(1) / 4);
-		iowrite32(tempReg + coreNum * 0x01000000, regVirt + IB_OFFSET(1) / 4); /* pointing to a different core */
+		//tempReg = ioread32(regVirt + IB_OFFSET(1) / 4);
+		//iowrite32(tempReg + coreNum * 0x01000000, regVirt + IB_OFFSET(1) / 4); /* pointing to a different core */
 
 		if (dspMemAddr < LL2_START)
 		{
@@ -108,7 +111,7 @@ uint32_t writeDSPMemory(pcieBarReg_t *pPcieBarReg, uint32_t coreNum,
 
 	if ((coreNum >= 0) && (coreNum <= 7))
 	{
-		iowrite32(tempReg, regVirt + IB_OFFSET(1) / 4); /* Restore IB_OFFSET1 */
+		//iowrite32(tempReg, regVirt + IB_OFFSET(1) / 4); /* Restore IB_OFFSET1 */
 	}
 	else
 	{
@@ -177,7 +180,7 @@ int uploadProgram(pcieBarReg_t *pPcieBarReg, uint8_t *pDspImgArray,
 		{
 			newCoreNum = 9;
 		}
-
+		debug_printf("temp=%d coreNum=%d\n",temp,coreNum);
 		//transfer the code to DSP.
 		count = secSize / BLOCK_TRANSFER_SIZE;
 		remainder = secSize - count * BLOCK_TRANSFER_SIZE;
@@ -190,7 +193,7 @@ int uploadProgram(pcieBarReg_t *pPcieBarReg, uint8_t *pDspImgArray,
 			}
 			/* Transfer boot tables to DSP */
 			writeDSPMemory(pPcieBarReg, newCoreNum, secStartAddr, tempArray,
-			BLOCK_TRANSFER_SIZE);
+					BLOCK_TRANSFER_SIZE);
 			secStartAddr += BLOCK_TRANSFER_SIZE;
 		}
 
@@ -279,11 +282,12 @@ int dspMemoryMap(uint32_t *pRegVirt, uint32_t pcAddr, uint32_t size)
  *  @param[in] pPcieBarReg		self-defined pcie bar structure data point.
  *  @retval 0 : success, -1 : platform init fail, -2 : DSP receive code fail, -3 : crc check fail in the DSP-side.
  */
-int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
+int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int index)
 {
 
 	//registerTable *pRegisterTable = NULL;
 	LinkLayerRegisterTable *pRegisterTable = NULL;
+
 //	uint8_t *DMAVirAddr = NULL;
 //	dma_addr_t DMAPhyAddr = 0;
 	uint32_t *pPutDSPImgZone = 0;
@@ -297,23 +301,25 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
 	uint32_t addrMap2DSPPCIE = 0;
 	uint32_t registerLength = REG_LEN;
 
+	uint8_t *DMAVirAddr = NULL;
+	dma_addr_t DMAPhyAddr = 0;
+
 // alloc DMA zone.
 	DMAVirAddr = (uint8_t*) dma_alloc_coherent(&pPciDev->dev, DMA_TRANSFER_SIZE,
 			&DMAPhyAddr, GFP_KERNEL);
 
 // because of PCIE Outbound windows size is 1M.
-	alignPhyAddr = (DMAPhyAddr  & 0xfff00000);
+	alignPhyAddr = (DMAPhyAddr & 0xfff00000);
 	debug_printf("the dma phy addr is 0x%x\n", alignPhyAddr);
 //
 //	alignPhyAddr = ((DMAPhyAddr + 0x100000) & (~0x100000));
 //	debug_printf("the dma phy1 addr is 0x%x\n", alignPhyAddr);
 
-
 	memOffset = (alignPhyAddr - DMAPhyAddr);
 	addrMap2DSPPCIE = (uint32_t)(DMAVirAddr + memOffset);
 
 	pRegisterTable = (LinkLayerRegisterTable *) addrMap2DSPPCIE;
-	gpRegisterTable = pRegisterTable;
+	//gpRegisterTable = pRegisterTable;
 //pRegisterTable->registerPhyAddrInPc = alignPhyAddr;
 
 	set_memory_ro(addrMap2DSPPCIE, 1);
@@ -323,19 +329,35 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
 	// TODO: the dspMemoryMap ,the last parameter should be variant.
 	retMapVal = dspMemoryMap(regVirt, alignPhyAddr, 0x400000);
 	// TODO process the error.
-	if(retMapVal!=0)
-	{}
+	if (retMapVal != 0)
+	{
+	}
 	else
-	{}
+	{
+	}
 
-// pushs DSPInit code.
-	retValue = uploadProgram(pPcieBarReg, _thirdBLCode, 0);
-
+	// pushs DSPInit code. devide into 4U
+	switch(index){
+	    case 0:
+	    	retValue = uploadProgram(pPcieBarReg, _thirdBLCode_U0, 0);
+	    	break;
+		case 1:
+			retValue = uploadProgram(pPcieBarReg, _thirdBLCode_U1, 0);
+			break;
+		case 2:
+			retValue = uploadProgram(pPcieBarReg, _thirdBLCode_U2, 0);
+			break;
+		case 3:
+			retValue = uploadProgram(pPcieBarReg, _thirdBLCode_U3, 0);
+			break;
+	}
+	//retValue = uploadProgram(pPcieBarReg, _thirdBLCode_U0, 0);
+	debug_printf("retValue of uploadProgram is %d\n", retValue);
 // waits DSPInitReady.
 	if (retValue == 0)
 	{
 		retPollVal = pollValue(&(pRegisterTable->DPUBootStatus), DSP_INIT_READY,
-				0x7fffffff);
+				0xffffffff);
 	}
 	else
 	{
@@ -343,8 +365,9 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
 		debug_printf("DPUBootStatus = %x \n", pRegisterTable->DPUBootStatus);
 		return (retValue);
 	}
-
+	debug_printf("after pollValue uploadProgram\n");
 // pushs the data to the DSP.
+
 	if (retPollVal == 0)
 	{
 		uint32_t DPUCoreLength = ((sizeof(_DPUCore) + 3) / 4) * 4;
@@ -363,7 +386,7 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
 	if (retPollVal == 0)
 	{
 		retPollVal = pollValue(&(pRegisterTable->DPUBootStatus),
-		DSP_GETCODE_FINISH, 0xffffffff);
+				DSP_GETCODE_FINISH, 0xffffffff);
 		if (retPollVal == 0)
 		{
 			debug_printf("DSP get DSPImg successful \n");
@@ -384,7 +407,7 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
 	if (retPollVal == 0)
 	{
 		retPollVal = pollValue(&(pRegisterTable->DPUBootStatus),
-		DSP_CRCCHECK_SUCCESSFUL, 0xffffffff);
+				DSP_CRCCHECK_SUCCESSFUL, 0xffffffff);
 		if (retPollVal == 0)
 		{
 			debug_printf("DSP check crc successful \n");
@@ -401,12 +424,30 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
 	else
 	{
 	}
-
+	//compare SetMultiCoreBootStatus to MulticoreCoreBootStatus
+	if (retPollVal == 0)
+	{
+		retPollVal = pollCompareValue(&(pRegisterTable->SetMultiCoreBootStatus),
+				&(pRegisterTable->MultiCoreBootStatus), 0xffffffff);
+		if (retPollVal == 0)
+		{
+			debug_printf("compare SetMultiCoreBootStatus to MulticoreCoreBootStatus successful \n");
+		}
+		else
+		{
+			retValue = -4;
+			debug_printf("pRegisterTable->MultiCoreBootStatus=%x\n", (pRegisterTable->MultiCoreBootStatus));
+			return (retValue);
+		}
+	}
+	else
+	{
+	}
 // wait the dsp jump to the dpm code.
 	if (retPollVal == 0)
 	{
 		retPollVal = pollValue(&(pRegisterTable->DPUBootStatus),
-		DSP_GETENTRY_FINISH, 0xffffffff);
+				DSP_GETENTRY_FINISH, 0xffffffff);
 		if (retPollVal == 0)
 		{
 			debug_printf("DSP jump to the dpm code successful \n");

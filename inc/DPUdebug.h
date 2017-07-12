@@ -24,7 +24,7 @@
 	} \
 	else \
 	{ \
-		printk(fmt,## args); \
+		printk(fmt,##args); \
 	} \
 } )
 #else

@@ -105,7 +105,7 @@ struct semaphore readSemaphore, writeSemaphore;
 // for DSP ready.
 struct semaphore gDspDpmOverSemaphore;
 
-struct pci_dev *g_pPcieDev = NULL;
+struct pci_dev *g_pPcieDev[4];
 //cyx add, for the using of interrupt+poll
 LinkLayerHandler *pHandle = NULL;
 
@@ -118,7 +118,7 @@ extern uint8_t *DMAVirAddr;
 int32_t gHostPciIrqNo = 0;
 //pcieBarReg_t pPcieBarReginit;
 //pcieBarReg_t *g_pPcieBarReg = &pPcieBarReginit;
-pcieBarReg_t *g_pPcieBarReg = NULL;
+pcieBarReg_t *g_pPcieBarReg[4];
 extern LinkLayerRegisterTable *gpRegisterTable;
 static int DPU_probe(struct pci_dev *pci_dev,
 		const struct pci_device_id *pci_id);
@@ -141,9 +141,14 @@ int init_module(void)
 	//pcieDevNum_t pcieDevNum;
 
 	int retValue = 0;
+	int pciCount=0;
 	uint32_t dummy = 0;
+	int i;
 
-	g_pPcieBarReg = (pcieBarReg_t *) kzalloc(sizeof(pcieBarReg_t), GFP_KERNEL);
+	for(i=0;i<4;i++)
+	{
+		g_pPcieBarReg[i] = (pcieBarReg_t *) kzalloc(sizeof(pcieBarReg_t), GFP_KERNEL);
+	}
 
 	pcieDevNum.count = 1;
 	pcieDevNum.minor_first = 0;
@@ -175,79 +180,117 @@ int init_module(void)
 	else
 	{
 	}
-
 	if (retValue >= 0)
 	{
-		retValue = PCI_FindPciDevices(&g_pPcieDev, FIND_PCIEDEV_MAXCOUNT);
+
+		retValue = PCI_FindPciDevices(g_pPcieDev,&pciCount);
 	}
 	else
 	{
 		retValue = -2;
+		return (retValue);
 	}
 
-	// readBar
-	if (retValue == 0)
+	if(retValue!=0)
 	{
-		retValue = PCI_readBAR(g_pPcieDev, g_pPcieBarReg);
+		printk("error in PCI_FindPciDevices\n");
 	}
 	else
 	{
-		retValue = -3;
-		DEBUG_INFOR("error:PCI_FindPciDevices\n");
+				//	debug for the dsp NO.
+		int i = 0;
+		for (i = 0; i < pciCount; i++)
+		{
+			debug_printf("the bar0[%x]=%x\n",
+					i, pci_resource_start(g_pPcieDev[i], 0));
+		}
 	}
 
-	// enablepci
-	if (retValue == 0)
-	{
-		pci_enable_device(g_pPcieDev);
-		pci_set_drvdata(g_pPcieDev, g_pPcieBarReg->memVirt);
-	}
-	else
-	{
-		retValue = -4;
-		DEBUG_INFOR("error:PCI_readBAR\n");
-	}
 
-	// setmaster
-	if (retValue == 0)
-	{
-		retValue = PCI_setMaster(g_pPcieDev);
-	}
-	else
-	{
-	}
 
-	// setinbound ,enableinterrupt,requestirq.
-	if (retValue == 0)
+	for (i = 1; i < 4; i++)
 	{
-		PCI_setInBound(g_pPcieDev, g_pPcieBarReg);
-		PCI_EnableDspInterrupt(g_pPcieBarReg);
-		//request_irq(16, ISR_handler, IRQF_SHARED, "TI 667x PCIE", &dummy);
-		request_irq(g_pPcieDev->irq, ISR_handler, IRQF_SHARED, "TI 667x PCIE",
-				&dummy);
-		printk("the host pci interrupt irq is %d\n", g_pPcieDev->irq);
-	}
-	else
-	{
-		retValue = -5;
-		DEBUG_INFOR("error:PCI_setMaster\n");
-	}
-	// bootLoader.
-	if (retValue == 0)
-	{
-		retValue = bootLoader(g_pPcieDev, g_pPcieBarReg);
-	}
-	else
-	{
-	}
 
-	if (retValue == 0)
-	{
-		printk("LHS in %s DPU boot success\n", __func__);
-	}
-	else
-	{
-		printk("LHS in %s pci_driver failed:retValue=%d\n", __func__, retValue);
+//		if (retValue >= 0)
+//		{
+//
+//			retValue = PCI_DevicesInit(&g_pPcieDev[i], pciCount,i);
+//		}
+//		else
+//		{
+//			retValue = -2;
+//		}
+		// readBar
+
+		if (retValue == 0)
+		{
+			debug_printf("g_pPcieDev[%d] is %0x\n",i,pci_resource_start(g_pPcieDev[i], 0));
+			retValue = PCI_readBAR(g_pPcieDev[i], g_pPcieBarReg[i]);
+		}
+		else
+		{
+			retValue = -3;
+			DEBUG_INFOR("error:PCI_FindPciDevices\n");
+		}
+
+		// enablepci
+		if (retValue == 0)
+		{
+			pci_enable_device(g_pPcieDev[i]);
+			pci_set_drvdata(g_pPcieDev[i], g_pPcieBarReg[i]->memVirt);
+		}
+		else
+		{
+			retValue = -4;
+			DEBUG_INFOR("error:PCI_readBAR\n");
+		}
+
+		// setmaster
+		if (retValue == 0)
+		{
+			retValue = PCI_setMaster(g_pPcieDev[i]);
+		}
+		else
+		{
+		}
+
+		// setinbound ,enableinterrupt,requestirq.
+		if (retValue == 0)
+		{
+			PCI_setInBound(g_pPcieDev[i], g_pPcieBarReg[i]);
+			PCI_EnableDspInterrupt(g_pPcieBarReg[i]);
+			//request_irq(16, ISR_handler, IRQF_SHARED, "TI 667x PCIE", &dummy);
+			request_irq(g_pPcieDev[i]->irq, ISR_handler, IRQF_SHARED,
+					"TI 667x PCIE", &dummy);
+			printk("the host pci interrupt irq is %d\n", g_pPcieDev[i]->irq);
+		}
+		else
+		{
+			retValue = -5;
+			DEBUG_INFOR("error:PCI_setMaster\n");
+		}
+		// bootLoader.
+		if (retValue == 0)
+		{
+			debug_printf("before bootloader g_pPcieDev[%d] is %0x\n",i,pci_resource_start(g_pPcieDev[i], 0));
+			retValue = bootLoader(g_pPcieDev[i], g_pPcieBarReg[i],i);
+
+		}
+		else
+		{
+		}
+
+		if (retValue == 0)
+		{
+			printk("LHS in %s DPU boot success\n", __func__);
+		}
+		else
+		{
+			printk("LHS in %s pci_driver failed:retValue=%d\n", __func__,
+					retValue);
+		}
+
+
 	}
 
 	return (retValue);
@@ -256,7 +299,7 @@ int init_module(void)
 //void cleanup_module(struct pci_dev *pPcieDev, pcieBarReg_t *pPcieBarReg)
 void cleanup_module()
 {
-
+#if 0
 	struct pci_dev *pPcieDev = g_pPcieDev;
 	pcieBarReg_t *pPcieBarReg = g_pPcieBarReg;
 	if (pPcieDev != NULL)
@@ -279,9 +322,10 @@ void cleanup_module()
 		int32_t irqNo = pPcieDev->irq;
 		//cyx add 20160607
 		kfree(pPcieBarReg);
-		unregister_chrdev_region(pcieDevNum.devnum,1);
+		unregister_chrdev_region(pcieDevNum.devnum, 1);
 		cdev_del(pPcieCdev);
-		dma_free_coherent(&pPcieDev->dev, DMA_TRANSFER_SIZE,DMAVirAddr,DMAPhyAddr);
+		dma_free_coherent(&pPcieDev->dev, DMA_TRANSFER_SIZE, DMAVirAddr,
+				DMAPhyAddr);
 
 		PCI_DisableDspInterrupt(pPcieBarReg);
 		/* ---------------------------------------------------------------------
@@ -351,6 +395,7 @@ void cleanup_module()
 		free_irq(irqNo, &dummy);
 	}
 	printk("pcie remove successful\n");
+#endif
 }
 
 int DPU_probe(struct pci_dev *pci_dev, const struct pci_device_id *pci_id)
@@ -368,6 +413,7 @@ int DPU_probe(struct pci_dev *pci_dev, const struct pci_device_id *pci_id)
 
 int DPU_open(struct inode *node, struct file *file)
 {
+#if 0
 	int retValue = 0;
 	int retLinkValue = 0;
 	debug_printf("Open \n");
@@ -390,7 +436,7 @@ int DPU_open(struct inode *node, struct file *file)
 	if (retLinkValue == 0)
 	{
 		retLinkValue = pollValue(&(pHandle->pRegisterTable->DPUBootStatus),
-		DSP_RUN_READY, 0x07ffffff);
+				DSP_RUN_READY, 0x07ffffff);
 	}
 	else
 	{
@@ -409,10 +455,12 @@ int DPU_open(struct inode *node, struct file *file)
 
 	}
 	return (retValue);
+#endif
 }
 
 int DPU_mmap(struct file *filp, struct vm_area_struct *vma)
 {
+#if 0
 	int retValue = 0;
 	int stateCode = 0;
 	uint32_t phyAddrFrameNO;
@@ -442,10 +490,12 @@ int DPU_mmap(struct file *filp, struct vm_area_struct *vma)
 	}
 
 	return (retValue);
+#endif
 }
 
 long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
+#if 0
 	long retValue = 0;
 	LinkLayerHandler *pLinkLayer = (LinkLayerHandler *) (filp->private_data);
 
@@ -582,7 +632,7 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case DPU_IO_CMD_CHECKDPMALLOVER:
 	{
 		DPUDriver_WaitBufferReadyParam *pParam =
-						(DPUDriver_WaitBufferReadyParam *) arg;
+				(DPUDriver_WaitBufferReadyParam *) arg;
 		stateCode = LinkLayer_CheckDpmStatus(pLinkLayer);
 		if (stateCode != 0)
 		{
@@ -607,6 +657,7 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	}
 
 	return (retValue);
+#endif
 }
 
 int DPU_release(struct pci_dev* pdev)
@@ -618,6 +669,7 @@ int DPU_release(struct pci_dev* pdev)
 
 static irqreturn_t ISR_handler(int irq, void *arg)
 {
+#if 0
 	uint32_t status;
 	uint32_t retValue;
 	debug_printf("ISR_handler function irq is %d\n", irq);
@@ -639,5 +691,5 @@ static irqreturn_t ISR_handler(int irq, void *arg)
 	}
 
 	PCI_ClearDspInterrupt(g_pPcieBarReg);
-
+#endif
 }
