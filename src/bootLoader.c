@@ -13,9 +13,9 @@
 #include "DPURegs.h"
 //#include "DSP_TBL_6678.h"
 #include "DSP_TBL_6678_U0.h"
-#include "DSP_TBL_6678_U1.h"
-#include "DSP_TBL_6678_U2.h"
-#include "DSP_TBL_6678_U3.h"
+//#include "DSP_TBL_6678_U1.h"
+//#include "DSP_TBL_6678_U2.h"
+//#include "DSP_TBL_6678_U3.h"
 #include "dspCodeImg.h"
 #include "LinkLayer.h"
 
@@ -180,7 +180,7 @@ int uploadProgram(pcieBarReg_t *pPcieBarReg, uint8_t *pDspImgArray,
 		{
 			newCoreNum = 9;
 		}
-		debug_printf("temp=%d coreNum=%d\n",temp,coreNum);
+		debug_printf("temp=%d coreNum=%d\n", temp, coreNum);
 		//transfer the code to DSP.
 		count = secSize / BLOCK_TRANSFER_SIZE;
 		remainder = secSize - count * BLOCK_TRANSFER_SIZE;
@@ -193,7 +193,7 @@ int uploadProgram(pcieBarReg_t *pPcieBarReg, uint8_t *pDspImgArray,
 			}
 			/* Transfer boot tables to DSP */
 			writeDSPMemory(pPcieBarReg, newCoreNum, secStartAddr, tempArray,
-					BLOCK_TRANSFER_SIZE);
+			BLOCK_TRANSFER_SIZE);
 			secStartAddr += BLOCK_TRANSFER_SIZE;
 		}
 
@@ -337,20 +337,22 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int index)
 	}
 
 	// pushs DSPInit code. devide into 4U
-	switch(index){
-	    case 0:
-	    	retValue = uploadProgram(pPcieBarReg, _thirdBLCode_U0, 0);
-	    	break;
-		case 1:
-			retValue = uploadProgram(pPcieBarReg, _thirdBLCode_U1, 0);
-			break;
-		case 2:
-			retValue = uploadProgram(pPcieBarReg, _thirdBLCode_U2, 0);
-			break;
-		case 3:
-			retValue = uploadProgram(pPcieBarReg, _thirdBLCode_U3, 0);
-			break;
-	}
+	retValue = uploadProgram(pPcieBarReg, _thirdBLCode_U0, 0);
+//	switch (index)
+//	{
+//	case 0:
+//		retValue = uploadProgram(pPcieBarReg, _thirdBLCode_U0, 0);
+//		break;
+//	case 1:
+//		retValue = uploadProgram(pPcieBarReg, _thirdBLCode_U1, 0);
+//		break;
+//	case 2:
+//		retValue = uploadProgram(pPcieBarReg, _thirdBLCode_U2, 0);
+//		break;
+//	case 3:
+//		retValue = uploadProgram(pPcieBarReg, _thirdBLCode_U3, 0);
+//		break;
+//	}
 	//retValue = uploadProgram(pPcieBarReg, _thirdBLCode_U0, 0);
 	debug_printf("retValue of uploadProgram is %d\n", retValue);
 // waits DSPInitReady.
@@ -367,7 +369,38 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int index)
 	}
 	debug_printf("after pollValue uploadProgram\n");
 // pushs the data to the DSP.
+// TODO:
+	/*
+	 *  int coreIndex=0;
+	 *   for(coreIndex=0;coreIndex<8;coreIndex++)
+	 *   {
+	 *   	//todo:
+	 *   	// push the codeApp
+	 *   }
+	 **/
+	int coreIndex = 0;
+	for (coreIndex = 0; coreIndex < 8; coreIndex++)
+	{
+		uint32_t DPUCoreLength = ((sizeof(_DPUCore) + 3) / 4) * 4;
+		debug_printf("the CodeLength = %x \n", DPUCoreLength);
+		memcpy(pPutDSPImgZone, _DPUCore, DPUCoreLength);
 
+		(pRegisterTable->DPUBootControl) = PC_PUSHCODE_FINISH;
+		retPollVal = pollValue(&(pRegisterTable->DPUBootStatus),
+		DSP_GETCODE_FINISH, 0xffffffff);
+		if (retPollVal == 0)
+		{
+			debug_printf("DSP get DSPImg successful \n");
+		}
+		else
+		{
+			retValue = -2;
+			debug_printf("DPUBootStatus=%x\n", (pRegisterTable->DPUBootStatus));
+			return (retValue);
+		}
+	}
+
+#if 0	// for one core
 	if (retPollVal == 0)
 	{
 		uint32_t DPUCoreLength = ((sizeof(_DPUCore) + 3) / 4) * 4;
@@ -402,7 +435,9 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int index)
 	{
 
 	}
+#endif
 
+#if 0
 // wait the dsp crc check result.
 	if (retPollVal == 0)
 	{
@@ -424,19 +459,23 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int index)
 	else
 	{
 	}
-	//compare SetMultiCoreBootStatus to MulticoreCoreBootStatus
+#endif
+
+	//compare SetMultiCoreBootStatus to MulticoreCoreBootStatus to know if the core allBoot or not.
 	if (retPollVal == 0)
 	{
 		retPollVal = pollCompareValue(&(pRegisterTable->SetMultiCoreBootStatus),
 				&(pRegisterTable->MultiCoreBootStatus), 0xffffffff);
 		if (retPollVal == 0)
 		{
-			debug_printf("compare SetMultiCoreBootStatus to MulticoreCoreBootStatus successful \n");
+			debug_printf(
+					"compare SetMultiCoreBootStatus to MulticoreCoreBootStatus successful \n");
 		}
 		else
 		{
 			retValue = -4;
-			debug_printf("pRegisterTable->MultiCoreBootStatus=%x\n", (pRegisterTable->MultiCoreBootStatus));
+			debug_printf("pRegisterTable->MultiCoreBootStatus=%x\n",
+					(pRegisterTable->MultiCoreBootStatus));
 			return (retValue);
 		}
 	}
@@ -444,6 +483,8 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int index)
 	{
 	}
 // wait the dsp jump to the dpm code.
+	// delet the DSP_GETENTRY_FINISH state in the dsp,so the coming code is invalid.
+#if 0
 	if (retPollVal == 0)
 	{
 		retPollVal = pollValue(&(pRegisterTable->DPUBootStatus),
@@ -462,7 +503,7 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int index)
 	else
 	{
 	}
-
+#endif
 	debug_printf("LINKLAYER_Open end,DPUBootStatus=%x\n",
 			pRegisterTable->DPUBootStatus);
 
