@@ -11,12 +11,14 @@
 #include "common.h"
 #include "bootLoader.h"
 #include "DPURegs.h"
-//#include "DSP_TBL_6678.h"
-#include "DSP_TBL_6678_U0.h"
+#include "DSP_TBL_6678.h"
+//#include "DSP_TBL_6678_U0.h"
 //#include "DSP_TBL_6678_U1.h"
 //#include "DSP_TBL_6678_U2.h"
 //#include "DSP_TBL_6678_U3.h"
-#include "dspCodeImg.h"
+#include "DPUCore_6678.h"
+//#include "DPUCore0_6678.h"
+//#include "dspCodeImg.h"
 #include "LinkLayer.h"
 
 #define OB_MASK_ONE 	(0xFFF00000)  	// 20-31
@@ -180,7 +182,7 @@ int uploadProgram(pcieBarReg_t *pPcieBarReg, uint8_t *pDspImgArray,
 		{
 			newCoreNum = 9;
 		}
-		debug_printf("temp=%d coreNum=%d\n", temp, coreNum);
+		debug_printf("secSize=%d secStartAddr=%d\n", secSize, secStartAddr);
 		//transfer the code to DSP.
 		count = secSize / BLOCK_TRANSFER_SIZE;
 		remainder = secSize - count * BLOCK_TRANSFER_SIZE;
@@ -222,8 +224,7 @@ int uploadProgram(pcieBarReg_t *pPcieBarReg, uint8_t *pDspImgArray,
 	}
 #endif
 	printk(
-			"Section %d started at %x with secSize %x bytes written to core %d\n",
-			secNum, secStartAddr, secSize, newCoreNum);
+			"bootEntryAddr=%d\n",bootEntryAddr);
 	return (retValue);
 }
 

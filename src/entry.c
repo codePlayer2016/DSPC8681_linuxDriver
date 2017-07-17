@@ -141,13 +141,14 @@ int init_module(void)
 	//pcieDevNum_t pcieDevNum;
 
 	int retValue = 0;
-	int pciCount=0;
+	int pciCount = 0;
 	uint32_t dummy = 0;
 	int i;
 
-	for(i=0;i<4;i++)
+	for (i = 0; i < 4; i++)
 	{
-		g_pPcieBarReg[i] = (pcieBarReg_t *) kzalloc(sizeof(pcieBarReg_t), GFP_KERNEL);
+		g_pPcieBarReg[i] = (pcieBarReg_t *) kzalloc(sizeof(pcieBarReg_t),
+				GFP_KERNEL);
 	}
 
 	pcieDevNum.count = 1;
@@ -183,7 +184,7 @@ int init_module(void)
 	if (retValue >= 0)
 	{
 
-		retValue = PCI_FindPciDevices(g_pPcieDev,&pciCount);
+		retValue = PCI_FindPciDevices(g_pPcieDev, &pciCount);
 	}
 	else
 	{
@@ -191,40 +192,28 @@ int init_module(void)
 		return (retValue);
 	}
 
-	if(retValue!=0)
+	if (retValue != 0)
 	{
 		printk("error in PCI_FindPciDevices\n");
 	}
 	else
 	{
-				//	debug for the dsp NO.
+		//	debug for the dsp NO.
 		int i = 0;
 		for (i = 0; i < pciCount; i++)
 		{
-			debug_printf("the bar0[%x]=%x\n",
-					i, pci_resource_start(g_pPcieDev[i], 0));
+			debug_printf("the bar0[%x]=%x\n", i,
+					pci_resource_start(g_pPcieDev[i], 0));
 		}
 	}
 
-
-
-	for (i = 1; i < 4; i++)
+//	for (i = 1; i < 4; i++)
+	for (i = 0; i < 1; i++)
 	{
-
-//		if (retValue >= 0)
-//		{
-//
-//			retValue = PCI_DevicesInit(&g_pPcieDev[i], pciCount,i);
-//		}
-//		else
-//		{
-//			retValue = -2;
-//		}
-		// readBar
-
 		if (retValue == 0)
 		{
-			debug_printf("g_pPcieDev[%d] is %0x\n",i,pci_resource_start(g_pPcieDev[i], 0));
+			debug_printf("g_pPcieDev[%d] is %0x\n", i,
+					pci_resource_start(g_pPcieDev[i], 0));
 			retValue = PCI_readBAR(g_pPcieDev[i], g_pPcieBarReg[i]);
 		}
 		else
@@ -272,8 +261,9 @@ int init_module(void)
 		// bootLoader.
 		if (retValue == 0)
 		{
-			debug_printf("before bootloader g_pPcieDev[%d] is %0x\n",i,pci_resource_start(g_pPcieDev[i], 0));
-			retValue = bootLoader(g_pPcieDev[i], g_pPcieBarReg[i],i);
+			debug_printf("before bootloader g_pPcieDev[%d] is %0x\n", i,
+					pci_resource_start(g_pPcieDev[i], 0));
+			retValue = bootLoader(g_pPcieDev[i], g_pPcieBarReg[i], i);
 
 		}
 		else
@@ -289,7 +279,6 @@ int init_module(void)
 			printk("LHS in %s pci_driver failed:retValue=%d\n", __func__,
 					retValue);
 		}
-
 
 	}
 
@@ -466,7 +455,7 @@ int DPU_mmap(struct file *filp, struct vm_area_struct *vma)
 	uint32_t phyAddrFrameNO;
 	uint32_t rangeLength_vma;
 	intptr_t *pAlignDMAVirtAddr =
-			((intptr_t *) (((LinkLayerHandler *) (filp->private_data))->pRegisterTable));
+	((intptr_t *) (((LinkLayerHandler *) (filp->private_data))->pRegisterTable));
 	phyAddrFrameNO = virt_to_phys(pAlignDMAVirtAddr);
 	debug_printf("phyAddrFrameNO=0x%x\n", phyAddrFrameNO);
 	//phyAddrFrameNO =
@@ -503,156 +492,156 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	switch (cmd)
 	{
-	case DPU_IO_CMD_CONFIRM:
-	{
-		stateCode = LinkLayer_Confirm(pLinkLayer, (LINKLAYER_IO_TYPE) arg);
+		case DPU_IO_CMD_CONFIRM:
+		{
+			stateCode = LinkLayer_Confirm(pLinkLayer, (LINKLAYER_IO_TYPE) arg);
 
-		if (stateCode != 0)
-		{
-			printk("LinkLayer_Confirm failed: %x\n", stateCode);
-		}
-		else
-		{
-		}
+			if (stateCode != 0)
+			{
+				printk("LinkLayer_Confirm failed: %x\n", stateCode);
+			}
+			else
+			{
+			}
 
-		break;
-	}
-
-	case DPU_IO_CMD_WAITBUFFERREADY:
-	{
-		DPUDriver_WaitBufferReadyParam *pParam =
-				(DPUDriver_WaitBufferReadyParam *) arg;
-		stateCode = LinkLayer_WaitBufferReady(pLinkLayer, pParam->waitType,
-				pParam->pendTime);
-		if (stateCode != 0)
-		{
-			debug_printf("LinkLayer_WaitBufferReady timeout: %x\n", stateCode);
-		}
-		else
-		{
-			debug_printf("linklayer wait buffer finished\n");
-		}
-		copy_to_user((pParam->pBufStatus), &stateCode, sizeof(int));
-		break;
-	}
-
-	case DPU_IO_CMD_CHANGEBUFFERSTATUS:
-	{
-		int *flag = (int *) arg;
-		debug_printf("DPU_IO_CMD_CHANGEBUFFERSTATUS:the *flag=%d\n", *flag);
-		stateCode = LinkLayer_ChangeBufferStatus(pLinkLayer, *flag);
-
-		if (stateCode != 0)
-		{
-			printk("LinkLayer_Confirm failed: %x\n", stateCode);
-		}
-		else
-		{
+			break;
 		}
 
-		break;
-	}
+		case DPU_IO_CMD_WAITBUFFERREADY:
+		{
+			DPUDriver_WaitBufferReadyParam *pParam =
+			(DPUDriver_WaitBufferReadyParam *) arg;
+			stateCode = LinkLayer_WaitBufferReady(pLinkLayer, pParam->waitType,
+					pParam->pendTime);
+			if (stateCode != 0)
+			{
+				debug_printf("LinkLayer_WaitBufferReady timeout: %x\n", stateCode);
+			}
+			else
+			{
+				debug_printf("linklayer wait buffer finished\n");
+			}
+			copy_to_user((pParam->pBufStatus), &stateCode, sizeof(int));
+			break;
+		}
+
+		case DPU_IO_CMD_CHANGEBUFFERSTATUS:
+		{
+			int *flag = (int *) arg;
+			debug_printf("DPU_IO_CMD_CHANGEBUFFERSTATUS:the *flag=%d\n", *flag);
+			stateCode = LinkLayer_ChangeBufferStatus(pLinkLayer, *flag);
+
+			if (stateCode != 0)
+			{
+				printk("LinkLayer_Confirm failed: %x\n", stateCode);
+			}
+			else
+			{
+			}
+
+			break;
+		}
 		// trigger the interrupt to DSP,make the DSP to start DPM process the picture.
-	case DPU_IO_CMD_INTERRUPT:
-	{
-		printk("trigger a interrupt to DSP\n");
-		uint32_t *pDspMappedRegVirt = g_pPcieBarReg->regVirt;
-		iowrite32(1, pDspMappedRegVirt + LEGACY_A_IRQ_STATUS_RAW / 4);
-		break;
-	}
+		case DPU_IO_CMD_INTERRUPT:
+		{
+			printk("trigger a interrupt to DSP\n");
+			uint32_t *pDspMappedRegVirt = g_pPcieBarReg->regVirt;
+			iowrite32(1, pDspMappedRegVirt + LEGACY_A_IRQ_STATUS_RAW / 4);
+			break;
+		}
 //////////////////////////////////////////////////////////////////////////
-	case DPU_IO_CMD_WAITDPM:
-	{
-		printk("wait the DSP trigger the host\n");
-		down(&gDspDpmOverSemaphore);
-		break;
+		case DPU_IO_CMD_WAITDPM:
+		{
+			printk("wait the DSP trigger the host\n");
+			down(&gDspDpmOverSemaphore);
+			break;
 
-	}
-	case DPU_IO_CMD_WAITDPMSTART:
-	{
-		printk("wait the DSP dsp start\n");
-		DPUDriver_WaitBufferReadyParam *pParam =
-				(DPUDriver_WaitBufferReadyParam *) arg;
-		stateCode = LinkLayer_WaitBufferReady(pLinkLayer, pParam->waitType,
-				pParam->pendTime);
-		if (stateCode != 0)
-		{
-			debug_printf("LinkLayer_WaitDpmReady timeout: %x\n", stateCode);
 		}
-		else
+		case DPU_IO_CMD_WAITDPMSTART:
 		{
-			debug_printf("LinkLayer_WaitDpmReady finished\n");
-		}
-		break;
+			printk("wait the DSP dsp start\n");
+			DPUDriver_WaitBufferReadyParam *pParam =
+			(DPUDriver_WaitBufferReadyParam *) arg;
+			stateCode = LinkLayer_WaitBufferReady(pLinkLayer, pParam->waitType,
+					pParam->pendTime);
+			if (stateCode != 0)
+			{
+				debug_printf("LinkLayer_WaitDpmReady timeout: %x\n", stateCode);
+			}
+			else
+			{
+				debug_printf("LinkLayer_WaitDpmReady finished\n");
+			}
+			break;
 
-	}
-	case DPU_IO_CMD_WRITE_TIMEOUT:
-	{
-		debug_printf("poll write timeout,we start to use interrupt for pc\n");
-		down(&writeSemaphore);
-		break;
-	}
-	case DPU_IO_CMD_READ_TIMEOUT:
-	{
-		debug_printf("poll read timeout,we start to use interrupt for pc\n");
-		down(&readSemaphore);
-		break;
-	}
-	case DPU_IO_CMD_CHANGEREG:
-	{
-		int *flag = (int *) arg;
-		debug_printf("DPU_IO_CMD_CHANGEREG:the *flag=%d\n", *flag);
-		stateCode = LinkLayer_ChangeBufferStatus(pLinkLayer, *flag);
+		}
+		case DPU_IO_CMD_WRITE_TIMEOUT:
+		{
+			debug_printf("poll write timeout,we start to use interrupt for pc\n");
+			down(&writeSemaphore);
+			break;
+		}
+		case DPU_IO_CMD_READ_TIMEOUT:
+		{
+			debug_printf("poll read timeout,we start to use interrupt for pc\n");
+			down(&readSemaphore);
+			break;
+		}
+		case DPU_IO_CMD_CHANGEREG:
+		{
+			int *flag = (int *) arg;
+			debug_printf("DPU_IO_CMD_CHANGEREG:the *flag=%d\n", *flag);
+			stateCode = LinkLayer_ChangeBufferStatus(pLinkLayer, *flag);
 
-		if (stateCode != 0)
-		{
-			printk("LinkLayer_ChangeBufferStatus failed: %x\n", stateCode);
+			if (stateCode != 0)
+			{
+				printk("LinkLayer_ChangeBufferStatus failed: %x\n", stateCode);
+			}
+			else
+			{
+				printk("LinkLayer_ChangeBufferStatus success\n");
+			}
+			break;
 		}
-		else
+		case DPU_IO_CMD_CHANGOVERREG:
 		{
-			printk("LinkLayer_ChangeBufferStatus success\n");
+			int *flag = (int *) arg;
+			debug_printf("DPU_IO_CMD_CHANGOVERREG:the *flag=%d\n", *flag);
+			stateCode = LinkLayer_ChangeBufferStatus(pLinkLayer, *flag);
+			if (stateCode != 0)
+			{
+				printk("LinkLayer_ChangeBufferStatus failed: %x\n", stateCode);
+			}
+			else
+			{
+				printk("LinkLayer_ChangeBufferStatus success\n");
+			}
+			break;
 		}
-		break;
-	}
-	case DPU_IO_CMD_CHANGOVERREG:
-	{
-		int *flag = (int *) arg;
-		debug_printf("DPU_IO_CMD_CHANGOVERREG:the *flag=%d\n", *flag);
-		stateCode = LinkLayer_ChangeBufferStatus(pLinkLayer, *flag);
-		if (stateCode != 0)
+		case DPU_IO_CMD_CHECKDPMALLOVER:
 		{
-			printk("LinkLayer_ChangeBufferStatus failed: %x\n", stateCode);
-		}
-		else
-		{
-			printk("LinkLayer_ChangeBufferStatus success\n");
-		}
-		break;
-	}
-	case DPU_IO_CMD_CHECKDPMALLOVER:
-	{
-		DPUDriver_WaitBufferReadyParam *pParam =
-				(DPUDriver_WaitBufferReadyParam *) arg;
-		stateCode = LinkLayer_CheckDpmStatus(pLinkLayer);
-		if (stateCode != 0)
-		{
-			debug_printf("LinkLayer_CheckDpmStatus timeout: %x\n", stateCode);
-		}
-		else
-		{
-			debug_printf("LinkLayer_CheckDpmStatus finished: %x\n", stateCode);
-		}
-		copy_to_user((pParam->pBufStatus), &stateCode, sizeof(int));
-		break;
+			DPUDriver_WaitBufferReadyParam *pParam =
+			(DPUDriver_WaitBufferReadyParam *) arg;
+			stateCode = LinkLayer_CheckDpmStatus(pLinkLayer);
+			if (stateCode != 0)
+			{
+				debug_printf("LinkLayer_CheckDpmStatus timeout: %x\n", stateCode);
+			}
+			else
+			{
+				debug_printf("LinkLayer_CheckDpmStatus finished: %x\n", stateCode);
+			}
+			copy_to_user((pParam->pBufStatus), &stateCode, sizeof(int));
+			break;
 
-	}
-	default:
-	{
-		retValue = 0;
-		printk("other operation cmd is %d\n", cmd);
+		}
+		default:
+		{
+			retValue = 0;
+			printk("other operation cmd is %d\n", cmd);
 
-		break;
-	}
+			break;
+		}
 
 	}
 
