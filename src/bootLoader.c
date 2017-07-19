@@ -26,8 +26,8 @@
 #define OB_MASK_FOUR 	(0xFFC00000) 	// 22-31
 #define OB_MASK_EIGHT 	(0xFF800000)	// 23-31
 #define DMA_TRANSFER_SIZE            (0x400000U)
-//LinkLayerRegisterTable *gpRegisterTable = NULL;
-//cyx 20160607
+LinkLayerRegisterTable *gpRegisterTable[4] = NULL;
+
 
 //
 // small tools.
@@ -320,7 +320,7 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int index)
 	addrMap2DSPPCIE = (uint32_t)(DMAVirAddr + memOffset);
 
 	pRegisterTable = (LinkLayerRegisterTable *) addrMap2DSPPCIE;
-	//gpRegisterTable = pRegisterTable;
+	gpRegisterTable[index] = pRegisterTable;
 //pRegisterTable->registerPhyAddrInPc = alignPhyAddr;
 
 	set_memory_ro(addrMap2DSPPCIE, 1);

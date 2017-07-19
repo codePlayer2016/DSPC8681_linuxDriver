@@ -5,7 +5,6 @@
 #include <linux/semaphore.h>
 #include "pcie.h"
 
-
 // PC-side write(DSP-side read) buffer status.
 #define PC_WT_READY		(0x000055aaU)
 #define PC_WAIT_WT		(0x000055aaU)
@@ -72,7 +71,7 @@ typedef struct _tagLinkLayerRegisterTable
 	uint32_t writeControl;
 	uint32_t readControl;
 	uint32_t PC_urlNumsReg;
-	uint32_t modelType;//1:motor 2:car 3:person
+	uint32_t modelType; //1:motor 2:car 3:person
 	uint32_t dpmOverControl;
 	uint32_t dpmStartControl;
 	uint32_t reserved1[0x1000 / 4 - 6];
@@ -91,21 +90,17 @@ typedef struct _tagLinkLayerHandler
 	uint32_t *pReadConfirmReg;
 } LinkLayerHandler, *LinkLayerHandlerPtr;
 
-int LinkLayer_Open(LinkLayerHandler **ppHandle, struct pci_dev *pPciDev,
-		pcieBarReg_t *pPcieBarReg, struct semaphore *pWriteSemaphore);
-
-int LinkLayer_WaitBufferReady(LinkLayerHandler *pHandle,
-		LINKLAYER_IO_TYPE ioType, uint32_t pendtime);
+int LinkLayer_Open(LinkLayerHandler ***ppHandle, struct pci_dev **pPciDev, pcieBarReg_t **pPcieBarReg, struct semaphore **pWriteSemaphore);
+void LinkLayer_Close(LinkLayerHandler **ppHandle);
+int LinkLayer_WaitBufferReady(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioType, uint32_t pendtime);
 
 int LinkLayer_Confirm(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioType);
 
-int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle,
-		LINKLAYER_IO_TYPE ioType);
+int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioType);
 int LinkLayer_CheckStatus(LinkLayerRegisterTable *gpRegisterTable);
 int LinkLayer_ChangeDpmReg(LinkLayerHandler *pHandle);
 int LinkLayer_ClearInterrupt(LinkLayerHandler *pHandle);
-int LinkLayer_WaitDpmOver(LinkLayerHandler *pHandle,uint32_t pendtime);
+int LinkLayer_WaitDpmOver(LinkLayerHandler *pHandle, uint32_t pendtime);
 int LinkLayer_CheckDpmStatus(LinkLayerHandler *pHandle);
-
 
 #endif // _INC_LINKLAYER_H_

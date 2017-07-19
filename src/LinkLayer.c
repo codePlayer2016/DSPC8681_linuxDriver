@@ -14,6 +14,7 @@
 #include "common.h"
 
 //extern LinkLayerRegisterTable *gpRegisterTable;
+extern LinkLayerRegisterTable *gpRegisterTable[4];
 extern struct semaphore readSemaphore;
 extern struct semaphore writeSemaphore;
 extern struct semaphore gDspDpmOverSemaphore;
@@ -58,8 +59,81 @@ int LinkLayer_Open(LinkLayerHandler **ppHandle, struct pci_dev *pPciDev,
 	return (retValue);
 }
 #endif
-int LinkLayer_WaitBufferReady(LinkLayerHandler *pHandle,
-		LINKLAYER_IO_TYPE ioType, uint32_t pendtime)
+#if 1
+// return the mask of the open chip.
+int LinkLayer_Open(LinkLayerHandler ***ppHandle, struct pci_dev **pPciDev, pcieBarReg_t **pPcieBarReg, struct semaphore **pWriteSemaphore)
+{
+	int retVal = 0;
+
+	uint32_t *regVirt = NULL;
+	int openChipMask = 0;
+
+	// TODO: procNumInPlate should can be variable.
+	int maxChipNum = 4;
+	int chipIndex = 0;
+	for (chipIndex = 0; chipIndex < maxChipNum; chipIndex++)
+	{
+		regVirt = pPcieBarReg[chipIndex]->regVirt;
+		if (NULL == regVirt)
+		{
+			continue;
+		}
+		else
+		{
+			openChipMask |= (1 << chipIndex);
+		}
+
+		LinkLayerHandler *pHandle[chipIndex] = (LinkLayerHandler *) kmalloc(sizeof(LinkLayerHandler), GFP_KERNEL);
+		if (NULL == pHandle[chipIndex])
+		{
+			retVal = -1;
+			debug_printf("error:kmalloc\n");
+			return (retVal);
+		}
+
+		debug_printf("pHandle[%d]'s size:%x\n", chipIndex, ksize(pHandle[chipIndex]));
+
+		pHandle[chipIndex]->pRegisterTable = gpRegisterTable[chipIndex];
+		pHandle[chipIndex]->outBufferLength = WTBUFLENGTH;
+		// TODO: this size should be resize. is this error?
+		pHandle[chipIndex]->inBufferLength = RDBUFLENGTH;
+		pHandle[chipIndex]->pOutBuffer = (uint32_t *) ((uint8_t *) gpRegisterTable[chipIndex] + sizeof(LinkLayerRegisterTable));
+		pHandle[chipIndex]->pInBuffer = (uint32_t *) ((uint8_t *) (pHandle[chipIndex]->pOutBuffer) + (pHandle[chipIndex]->outBufferLength));
+		pHandle[chipIndex]->pReadConfirmReg = (uint32_t *) ((uint8_t *) regVirt + LEGACY_A_IRQ_STATUS_RAW);
+		pHandle[chipIndex]->pWriteConfirmReg = (uint32_t *) ((uint8_t *) regVirt + LEGACY_B_IRQ_STATUS_RAW);
+
+	}
+	if (0 == openChipMask)
+	{
+		*ppHandle = NULL;
+		debug_printf("maybeError:no chip be open\n");
+		return (0);
+	}
+	else
+	{
+		retVal = openChipMask;
+		*ppHandle = pHandle;
+	}
+
+	debug_printf("successful");
+	return (retVal);
+}
+#endif
+
+void LinkLayer_Close(LinkLayerHandler **ppHandle)
+{
+	LinkLayerHandler **pHandle = ppHandle;
+	int chipIndex = 0;
+	int maxChipNum = 4;
+	for (chipIndex = 0; chipIndex < maxChipNum; chipIndex++)
+	{
+		if (NULL != pHandle[chipIndex])
+		{
+			kfree(pHandle[chipIndex]);
+		}
+	}
+}
+int LinkLayer_WaitBufferReady(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioType, uint32_t pendtime)
 {
 	int retValue = 1;
 	int pollCount = 0;
@@ -149,8 +223,7 @@ int LinkLayer_Confirm(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioType)
 	return (retValue);
 }
 
-int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle,
-		LINKLAYER_IO_TYPE ioType)
+int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioType)
 {
 	int retValue = 0;
 
@@ -164,8 +237,7 @@ int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle,
 	{
 		// PC set the register so dsp can read.
 		pHandle->pRegisterTable->writeControl = PC_WT_OVER;
-		debug_printf("change the writestatus in the dsp,writeNumer=%x\n",
-				(pHandle->pRegisterTable->writeControl));
+		debug_printf("change the writestatus in the dsp,writeNumer=%x\n", (pHandle->pRegisterTable->writeControl));
 		//5.13
 		pHandle->pRegisterTable->dpmStartControl = 0x00000000;
 	}
@@ -190,8 +262,7 @@ int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle,
 	{
 		// PC set the register so dsp can't read.polling
 		// TODO: change the PC_WT_READY to a meaning name.
-		debug_printf("%%%%%%pHandle->pRegisterTable->dpmOverControl %x\n",
-				pHandle->pRegisterTable->dpmOverControl);
+		debug_printf("%%%%%%pHandle->pRegisterTable->dpmOverControl %x\n", pHandle->pRegisterTable->dpmOverControl);
 		pHandle->pRegisterTable->dpmOverControl = PC_DPM_OVERCLR;
 		//2016.5.20
 		pHandle->pRegisterTable->dpmStartControl = 0x00000000;
