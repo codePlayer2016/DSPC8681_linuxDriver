@@ -111,7 +111,7 @@ LinkLayerHandler *pHandle[4];
 
 //cyx 20160607
 pcieDevNum_t pcieDevNum;
-struct cdev * pPcieCdev = NULL;
+struct cdev * pPcieCdev[4];
 extern dma_addr_t DMAPhyAddr;
 extern uint8_t *DMAVirAddr;
 
@@ -136,142 +136,69 @@ static struct pci_driver DPU_pci_driver =
 // todo: we should design a struct include all the chip status in the plateform.
 int init_module(void)
 {
-	//struct cdev * pPcieCdev = NULL;
-	//pcieDevNum_t pcieDevNum;
 
 	int retValue = 0;
-	int pciCount = 0;
+	int pciDevCount = 0;
 	uint32_t dummy = 0;
-
-	int chipIndex = 0;
-
-	for (chipIndex = 0; chipIndex < 4; chipIndex++)
-	{
-		g_pPcieBarReg[chipIndex] = (pcieBarReg_t *) kzalloc(sizeof(pcieBarReg_t), GFP_KERNEL);
-	}
-
-	pcieDevNum.count = 1;
-	pcieDevNum.minor_first = 0;
 
 	sema_init(&writeSemaphore, 0);
 	sema_init(&readSemaphore, 0);
 	sema_init(&gDspDpmOverSemaphore, 0);
 
-	retValue = alloc_chrdev_region(&pcieDevNum.devnum, pcieDevNum.minor_first, pcieDevNum.count, DEV_NAME);
-	if (retValue >= 0)
+	retValue = PCI_FindPciDevices(g_pPcieDev, &pciDevCount);
+	if (retValue != 0)
 	{
-		pcieDevNum.major = MAJOR(pcieDevNum.devnum);
-	}
-	else
-	{
-		retValue = -1;
-		debug_printf("error:alloc_chrdev_region\n");
-	}
-
-	if (retValue >= 0)
-	{
-		pPcieCdev = cdev_alloc();
-		unsigned int devno = pcieDevNum.devnum;
-		cdev_init(pPcieCdev, &DPU_fops);
-		pPcieCdev->owner = THIS_MODULE;
-		cdev_add(pPcieCdev, devno, 1);
-	}
-	else
-	{
-	}
-	if (retValue >= 0)
-	{
-
-		retValue = PCI_FindPciDevices(g_pPcieDev, &pciCount);
-	}
-	else
-	{
-		retValue = -2;
+		debug_printf("error:PCI_FindPciDevices\n");
 		return (retValue);
 	}
 
-	if (retValue != 0)
+	int chipIndex = 0;
+	for (chipIndex = 0; chipIndex < pciDevCount; chipIndex++)
 	{
-		printk("error in PCI_FindPciDevices\n");
-	}
-	else
-	{
-		//	debug for the dsp NO.
-		for (chipIndex = 0; chipIndex < pciCount; chipIndex++)
-		{
-			debug_printf("bar0[%x]=%x\n", chipIndex, pci_resource_start(g_pPcieDev[chipIndex], 0));
-		}
+		g_pPcieBarReg[chipIndex] = (pcieBarReg_t *) kzalloc(sizeof(pcieBarReg_t), GFP_KERNEL);
 	}
 
-	// for every C6678 chip in the DSPC8681
-	for (chipIndex = 0; chipIndex < 2; chipIndex++)
+	pcieDevNum.count = pciDevCount;
+	pcieDevNum.minor_first = 0;
+	retValue = alloc_chrdev_region(&pcieDevNum.devnum, pcieDevNum.minor_first, pcieDevNum.count, DEV_NAME);
+	if (retValue)
 	{
-		if (retValue == 0)
-		{
-			debug_printf("g_pPcieDev[%d] is %0x\n", chipIndex, pci_resource_start(g_pPcieDev[chipIndex], 0));
-			retValue = PCI_readBAR(g_pPcieDev[chipIndex], g_pPcieBarReg[chipIndex]);
-		}
-		else
-		{
-			retValue = -3;
-			debug_printf("error:PCI_FindPciDevices\n");
-		}
+		debug_printf("error:alloc_chrdev_region\n");
+		return (retValue);
+	}
 
-		// enablepci
-		if (retValue == 0)
+	pcieDevNum.major = MAJOR(pcieDevNum.devnum);
+
+	for (chipIndex = pcieDevNum.minor_first; chipIndex < pcieDevNum.count; chipIndex++)
+	{
+		pPcieCdev[chipIndex] = cdev_alloc();
+		cdev_init(pPcieCdev[chipIndex], &DPU_fops);
+		pPcieCdev[chipIndex]->owner = THIS_MODULE;
+		cdev_add(pPcieCdev[chipIndex], MKDEV(pcieDevNum.major, chipIndex), 1);
+
+		retValue = PCI_readBAR(g_pPcieDev[chipIndex], g_pPcieBarReg[chipIndex]);
+		if (0 != retValue)
 		{
-			pci_enable_device(g_pPcieDev[chipIndex]);
-			pci_set_drvdata(g_pPcieDev[chipIndex], g_pPcieBarReg[chipIndex]->memVirt);
-		}
-		else
-		{
-			retValue = -4;
 			debug_printf("error:PCI_readBAR\n");
+			return (retValue);
 		}
 
-		// setmaster
-		if (retValue == 0)
-		{
-			retValue = PCI_setMaster(g_pPcieDev[chipIndex]);
-		}
-		else
-		{
-		}
+		pci_enable_device(g_pPcieDev[chipIndex]);
+		pci_set_drvdata(g_pPcieDev[chipIndex], g_pPcieBarReg[chipIndex]->memVirt);
+		retValue = PCI_setMaster(g_pPcieDev[chipIndex]);
+		PCI_setInBound(g_pPcieDev[chipIndex], g_pPcieBarReg[chipIndex]);
+		PCI_EnableDspInterrupt(g_pPcieBarReg[chipIndex]);
+		//request_irq(16, ISR_handler, IRQF_SHARED, "TI 667x PCIE", &dummy);
+		request_irq(g_pPcieDev[chipIndex]->irq, ISR_handler, IRQF_SHARED, "TI 667x PCIE", &dummy);
+		debug_printf("irq is %d\n", g_pPcieDev[chipIndex]->irq);
 
-		// setinbound ,enableinterrupt,requestirq.
-		if (retValue == 0)
-		{
-			PCI_setInBound(g_pPcieDev[chipIndex], g_pPcieBarReg[chipIndex]);
-			PCI_EnableDspInterrupt(g_pPcieBarReg[chipIndex]);
-			//request_irq(16, ISR_handler, IRQF_SHARED, "TI 667x PCIE", &dummy);
-			request_irq(g_pPcieDev[chipIndex]->irq, ISR_handler, IRQF_SHARED, "TI 667x PCIE", &dummy);
-			printk("the host pci interrupt irq is %d\n", g_pPcieDev[chipIndex]->irq);
-		}
-		else
-		{
-			retValue = -5;
-			debug_printf("error:PCI_setMaster\n");
-		}
-		// bootLoader.
-		if (retValue == 0)
-		{
-			debug_printf("before bootloader g_pPcieDev[%d] is %0x\n", chipIndex, pci_resource_start(g_pPcieDev[chipIndex], 0));
-			retValue = bootLoader(g_pPcieDev[chipIndex], g_pPcieBarReg[chipIndex], chipIndex);
-
-		}
-		else
-		{
-		}
-
-		if (retValue == 0)
-		{
-			printk("LHS in %s DPU boot success\n", __func__);
-		}
-		else
-		{
-			printk("LHS in %s pci_driver failed:retValue=%d\n", __func__, retValue);
-		}
-
+	}
+	// for test
+	retValue = bootLoader(g_pPcieDev[0], g_pPcieBarReg[0], 0);
+	if (0 != retValue)
+	{
+		debug_printf("bootLoader is error\n");
+		return (retValue);
 	}
 
 	return (retValue);
@@ -394,6 +321,7 @@ int DPU_probe(struct pci_dev *pci_dev, const struct pci_device_id *pci_id)
 
 int DPU_open(struct inode *node, struct file *file)
 {
+#if 0
 	int retLinkValue = 0;
 
 	retLinkValue = LinkLayer_Open(&pHandle, g_pPcieDev, g_pPcieBarReg, NULL);
@@ -429,25 +357,28 @@ int DPU_open(struct inode *node, struct file *file)
 #endif
 	debug_printf("successful,openChipMask=%x\n", retLinkValue);
 	return (retLinkValue);
+#endif
 }
 
 static void DPU_close(struct file *pFile)
 {
-	LinkLayerHandler *pHandle[4];
+	LinkLayerHandler **pHandle;
 	pHandle = (LinkLayerHandler **) (pFile->private_data);
 	LinkLayer_Close(pHandle);
 }
 
 // problem: one map function. how to solution other map.
+// may be wait and solution one chip
+// can only test for U0 and chipIndex MUST BE 0
 int DPU_mmap(struct file *filp, struct vm_area_struct *vma)
 {
-#if 1
-	int retValue = 0;
+#if 0
+	int retVal = 0;
 	int stateCode = 0;
 	uint32_t phyAddrFrameNO;
 	uint32_t rangeLength_vma;
 	intptr_t *pAlignDMAVirtAddr;
-	LinkLayerHandler *chipComHandle[4];
+	LinkLayerHandler **chipComHandle;
 	chipComHandle = (LinkLayerHandler **) (filp->private_data);
 	int chipIndex = 0;
 	int maxChipNum = 4;
@@ -461,6 +392,7 @@ int DPU_mmap(struct file *filp, struct vm_area_struct *vma)
 		else
 		{
 			openChipMask |= (1 << chipIndex);
+			// TODO: solution the problem.
 			pAlignDMAVirtAddr = ((intptr_t *) (chipComHandle[chipIndex]->pRegisterTable));
 			phyAddrFrameNO = virt_to_phys(pAlignDMAVirtAddr);
 			phyAddrFrameNO = (phyAddrFrameNO >> PAGE_SHIFT);
@@ -474,7 +406,17 @@ int DPU_mmap(struct file *filp, struct vm_area_struct *vma)
 		}
 
 	}
-
+	if (0 == openChipMask)
+	{
+		debug_printf("maybeError:no chip be open\n");
+		return (0);
+	}
+	else
+	{
+		retVal = openChipMask;
+		return (retVal);
+	}
+#if 0
 	intptr_t *pAlignDMAVirtAddr = ((intptr_t *) (((LinkLayerHandler *) (filp->private_data))->pRegisterTable));
 	phyAddrFrameNO = virt_to_phys(pAlignDMAVirtAddr);
 	debug_printf("phyAddrFrameNO=0x%x\n", phyAddrFrameNO);
@@ -498,6 +440,7 @@ int DPU_mmap(struct file *filp, struct vm_area_struct *vma)
 	}
 
 	return (retValue);
+#endif
 #endif
 }
 

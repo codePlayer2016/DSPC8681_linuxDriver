@@ -63,6 +63,7 @@ int LinkLayer_Open(LinkLayerHandler **ppHandle, struct pci_dev *pPciDev,
 // return the mask of the open chip.
 int LinkLayer_Open(LinkLayerHandler ***ppHandle, struct pci_dev **pPciDev, pcieBarReg_t **pPcieBarReg, struct semaphore **pWriteSemaphore)
 {
+#if 0
 	int retVal = 0;
 
 	uint32_t *regVirt = NULL;
@@ -117,6 +118,7 @@ int LinkLayer_Open(LinkLayerHandler ***ppHandle, struct pci_dev **pPciDev, pcieB
 
 	debug_printf("successful");
 	return (retVal);
+#endif
 }
 #endif
 

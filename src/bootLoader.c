@@ -26,7 +26,7 @@
 #define OB_MASK_FOUR 	(0xFFC00000) 	// 22-31
 #define OB_MASK_EIGHT 	(0xFF800000)	// 23-31
 #define DMA_TRANSFER_SIZE            (0x400000U)
-LinkLayerRegisterTable *gpRegisterTable[4] = NULL;
+LinkLayerRegisterTable *gpRegisterTable[4];
 
 
 //

@@ -5,9 +5,6 @@
 #define TI667X_PCI_VENDOR_ID (0x104c)
 #define TI667X_PCI_DEVICE_ID (0xb005)
 
-//struct pci_dev *devArray[6];
-// TODO the pPcieDev should be a struct pci_dev array. eg struct pci_dev pciDevArray[n]
-//		so we can find many pci device.
 int PCI_FindPciDevices(struct pci_dev ** pPcieDev, int *pDevCount)
 {
 
@@ -15,91 +12,44 @@ int PCI_FindPciDevices(struct pci_dev ** pPcieDev, int *pDevCount)
 	struct pci_dev *dev = NULL;
 	uint32_t pciDevCount = 0;
 
-//	int cycCount = 0;
-//	int loopCondition = 0;
-
-//	get the pci dev.
-	//1. get all device ,include the pci bridge.
-	//2. from all device just get the first dsp
-	//if (index == 0)
-	//{
-
-		do
+	do
+	{
+		dev = pci_get_device(TI667X_PCI_VENDOR_ID, TI667X_PCI_DEVICE_ID, dev);
+		if (NULL != dev)
 		{
-			dev = pci_get_device(TI667X_PCI_VENDOR_ID, TI667X_PCI_DEVICE_ID,
-					dev);
-			if (NULL != dev)
+			if ((dev->class >> 8) == PCI_CLASS_BRIDGE_PCI)
 			{
-				if ((dev->class >> 8) == PCI_CLASS_BRIDGE_PCI)
-				{
-					debug_printf("skipped pcie RC\n");
-					continue;
-				}
-				else
-				{
-					debug_printf("find the pcie EP:pciDevCount\n", pciDevCount);
-					pPcieDev[pciDevCount] = dev;
-					pciDevCount++;
-				}
+				debug_printf("skipped pcie RC\n");
+				continue;
 			}
 			else
 			{
-				debug_printf("pciDevCount=%x\n", pciDevCount);
-				//retValue=-1;
-				break;
+				debug_printf("find the pcie EP:%d\n", pciDevCount);
+				pPcieDev[pciDevCount] = dev;
+				pciDevCount++;
 			}
-
-		} while (1);
-
-		*pDevCount=pciDevCount;
-//		//	debug for the dsp NO.
-//		int i = 0;
-//		for (i = 0; i < pciDevCount; i++)
-//		{
-//			debug_printf("the bar0[%x]=%x\n",
-//					i, pci_resource_start(devArray[i], 0));
-//		}
-
-	/*	if (pciDevCount > 0)
-		{
-			//*pPcieDev = devArray[0];	//1
-			*pPcieDev = devArray[index];	//1
-			//gHostPciIrqNo=pPcieDev->irq;
 		}
 		else
 		{
-			debug_printf("find no pci device\n");
-		}*/
-	//}
-/*	else
+			debug_printf("pciDevCount=%x\n", pciDevCount);
+			break;
+		}
+
+	} while (1);
+
+	if (0 == pciDevCount)
 	{
-		debug_printf("index is %d,devArray[index] is %0x\n",index,pci_resource_start(devArray[index], 0));
-		*pPcieDev = devArray[index];
+		retValue = -1;
+		debug_printf("error:\n");
+	}
+	else
+	{
+		*pDevCount = pciDevCount;
+	}
 
-		if(*pPcieDev == NULL){
-			debug_printf(" pPcieDev[index] is NULL\n");
-		}
-		else{
-			debug_printf(" pPcieDev[index] is %0x\n",pci_resource_start(*pPcieDev, 0));
-		}
-
-	}*/
 	return (retValue);
 }
-//int PCI_DevicesInit(struct pci_dev **pPcieDev, int pciCount,int index){
-//
-//	if ((pciCount > 0) && (devArray[index]!=NULL))
-//	{
-//		debug_printf("devArray[%d] is %x\n",index,pci_resource_start(devArray[index],0));
-//		*pPcieDev = devArray[index];	//1
-//
-//	}
-//	else
-//	{
-//		debug_printf("find no pci device\n");
-//	}
-//	 return 0;
-//}
+
 int PCI_readBAR(struct pci_dev *pPcieDev, pcieBarReg_t *pPcieBarReg)
 {
 	int retValue = 0;
@@ -126,7 +76,7 @@ int PCI_readBAR(struct pci_dev *pPcieDev, pcieBarReg_t *pPcieBarReg)
 	barLen[3] = pci_resource_len(pPcieDev, 3);
 	barFlags[3] = pci_resource_flags(pPcieDev, 3);
 
-	printk("barStart is %x\n",barStart[0]);
+	printk("barStart is %x\n", barStart[0]);
 
 	/* ---------------------------------------------------------------------
 	 * Map the REG memory region
@@ -245,7 +195,7 @@ int PCI_readBAR(struct pci_dev *pPcieDev, pcieBarReg_t *pPcieBarReg)
 	}
 	else
 	{
-		DEBUG_INFOR("error:PCI_readBAR\n");
+		debug_printf("error:PCI_readBAR\n");
 	}
 
 	//printk("LHS the value is %x\n", pPcieBarReg->regVirt);
