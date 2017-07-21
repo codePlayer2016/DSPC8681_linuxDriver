@@ -90,7 +90,8 @@ typedef struct _tagLinkLayerHandler
 	uint32_t *pReadConfirmReg;
 } LinkLayerHandler, *LinkLayerHandlerPtr;
 
-int LinkLayer_Open(LinkLayerHandler ***ppHandle, struct pci_dev **pPciDev, pcieBarReg_t **pPcieBarReg, struct semaphore **pWriteSemaphore);
+//int LinkLayer_Open(LinkLayerHandler ***ppHandle, struct pci_dev **pPciDev, pcieBarReg_t **pPcieBarReg, struct semaphore **pWriteSemaphore);
+int LinkLayer_Open(LinkLayerHandler *pLinkLayerHandle, ProcessorUnitDev_t *pProcessorUnitDev);
 void LinkLayer_Close(LinkLayerHandler **ppHandle);
 int LinkLayer_WaitBufferReady(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioType, uint32_t pendtime);
 

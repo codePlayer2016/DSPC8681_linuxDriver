@@ -61,7 +61,30 @@ int LinkLayer_Open(LinkLayerHandler **ppHandle, struct pci_dev *pPciDev,
 #endif
 #if 1
 // return the mask of the open chip.
-int LinkLayer_Open(LinkLayerHandler ***ppHandle, struct pci_dev **pPciDev, pcieBarReg_t **pPcieBarReg, struct semaphore **pWriteSemaphore)
+
+int LinkLayer_Open(LinkLayerHandler *pLinkLayerHandle, ProcessorUnitDev_t *pProcessorUnitDev)
+{
+	int retVal = 0;
+	// init the pLinkLayerHandle
+	struct pci_dev *pPciDev = pProcessorUnitDev->pPciDev;
+	pcieBarReg_t *pPcieBarReg = pProcessorUnitDev->pPciBarReg;
+	int chipIndex = pProcessorUnitDev->devMinor;
+	uint32_t *regVirt = pPcieBarReg->regVirt;
+
+	pLinkLayerHandle->pRegisterTable = gpRegisterTable[chipIndex];
+	debug_printf("chipIndex=%d\n", chipIndex);
+	pLinkLayerHandle->outBufferLength = WTBUFLENGTH;
+	// TODO: this size should be resize. is this error?
+	pLinkLayerHandle->inBufferLength = RDBUFLENGTH;
+	pLinkLayerHandle->pOutBuffer = (uint32_t *) ((uint8_t *) gpRegisterTable[chipIndex] + sizeof(LinkLayerRegisterTable));
+	pLinkLayerHandle->pInBuffer = (uint32_t *) ((uint8_t *) (pLinkLayerHandle->pOutBuffer) + (pLinkLayerHandle->outBufferLength));
+	pLinkLayerHandle->pReadConfirmReg = (uint32_t *) ((uint8_t *) regVirt + LEGACY_A_IRQ_STATUS_RAW);
+	pLinkLayerHandle->pWriteConfirmReg = (uint32_t *) ((uint8_t *) regVirt + LEGACY_B_IRQ_STATUS_RAW);
+
+	return (retVal);
+}
+#if 0
+int LinkLayer_Open(LinkLayerHandler *ppHandle, struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, struct semaphore **pWriteSemaphore)
 {
 #if 0
 	int retVal = 0;
@@ -120,6 +143,7 @@ int LinkLayer_Open(LinkLayerHandler ***ppHandle, struct pci_dev **pPciDev, pcieB
 	return (retVal);
 #endif
 }
+#endif
 #endif
 
 void LinkLayer_Close(LinkLayerHandler **ppHandle)

@@ -162,7 +162,7 @@ int init_module(void)
 
 	pcieDevNum.count = pciDevCount;
 	pcieDevNum.minor_first = 0;
-	retValue = alloc_chrdev_region(&pcieDevNum.devnum, pcieDevNum.minor_first, pcieDevNum.count, DEV_NAME);
+	retValue = alloc_chrdev_region(&(pcieDevNum.devnum), pcieDevNum.minor_first, pcieDevNum.count, DEV_NAME);
 	if (retValue)
 	{
 		debug_printf("error:alloc_chrdev_region\n");
@@ -173,10 +173,13 @@ int init_module(void)
 
 	for (chipIndex = pcieDevNum.minor_first; chipIndex < pcieDevNum.count; chipIndex++)
 	{
-		pPcieCdev[chipIndex] = cdev_alloc();
+		//pPcieCdev[chipIndex] = cdev_alloc();
+		pPcieCdev[chipIndex] = &(g_pProcessorUnitDev[chipIndex]->charDev);
 		cdev_init(pPcieCdev[chipIndex], &DPU_fops);
 		pPcieCdev[chipIndex]->owner = THIS_MODULE;
 		cdev_add(pPcieCdev[chipIndex], MKDEV(pcieDevNum.major, chipIndex), 1);
+
+		debug_printf("dev_t=%x\n", MKDEV(pcieDevNum.major, chipIndex));
 
 		retValue = PCI_readBAR(g_pPcieDev[chipIndex], g_pPcieBarReg[chipIndex]);
 		if (0 != retValue)
@@ -192,11 +195,11 @@ int init_module(void)
 		PCI_EnableDspInterrupt(g_pPcieBarReg[chipIndex]);
 		//request_irq(16, ISR_handler, IRQF_SHARED, "TI 667x PCIE", &dummy);
 		request_irq(g_pPcieDev[chipIndex]->irq, ISR_handler, IRQF_SHARED, "TI 667x PCIE", &dummy);
-		debug_printf("irq is %d\n", g_pPcieDev[chipIndex]->irq);
+		//debug_printf("irq is %d\n", g_pPcieDev[chipIndex]->irq);
 
 		g_pProcessorUnitDev[chipIndex] = (ProcessorUnitDev_t *) kzalloc(sizeof(ProcessorUnitDev_t), GFP_KERNEL);
 		g_pProcessorUnitDev[chipIndex]->devMinor = chipIndex;
-		g_pProcessorUnitDev[chipIndex]->pCharDev = pPcieCdev[chipIndex];
+		//g_pProcessorUnitDev[chipIndex]->pCharDev = pPcieCdev[chipIndex];
 		g_pProcessorUnitDev[chipIndex]->pPciBarReg = g_pPcieBarReg[chipIndex];
 		g_pProcessorUnitDev[chipIndex]->pPciDev = g_pPcieDev[chipIndex];
 		retValue = bootLoader(g_pPcieDev[chipIndex], g_pPcieBarReg[chipIndex], chipIndex);
@@ -205,15 +208,9 @@ int init_module(void)
 			debug_printf("%dth processor boot error\n", chipIndex);
 			continue;
 		}
+		debug_printf("*g_pProcessorUnitDev[%d]=%x,pciDev=%x,pciBarReg=%x\n", chipIndex, *g_pProcessorUnitDev[chipIndex], *g_pPcieDev[chipIndex],
+				*g_pPcieBarReg[chipIndex]);
 	}
-	// for test
-//	retValue = bootLoader(g_pPcieDev[0], g_pPcieBarReg[0], 0);
-//	if (0 != retValue)
-//	{
-//		debug_printf("bootLoader is error\n");
-//		return (retValue);
-//	}
-
 	return (retValue);
 }
 
@@ -337,21 +334,57 @@ int DPU_probe(struct pci_dev *pci_dev, const struct pci_device_id *pci_id)
 
 int DPU_open(struct inode *node, struct file *filp)
 {
-	ProcessorUnitDev_t *pProcessorUnitDev = container_of(node->i_cdev, ProcessorUnitDev_t, pCharDev);
-	filp->private_data = pProcessorUnitDev;
-	debug_printf("minor=%d\n", pProcessorUnitDev->devMinor);
+	int retVal = 0;
+	if (NULL == node->i_cdev)
+	{
+		debug_printf("cdev==null\n");
+	}
 
-#if 0
+	debug_printf("dev_t=%x,devMinor=%x,fileName=%s cdev=%x\n", node->i_rdev, MINOR(node->i_rdev), filp->f_path.dentry->d_name.name, *(node->i_cdev));
+
+	ProcessorUnitDev_t *pProcessorUnitDev = container_of(node->i_cdev, ProcessorUnitDev_t, charDev);
+
+	if (NULL == pProcessorUnitDev->pPciDev)
+	{
+		debug_printf("pPciDev==NULL\n");
+	}
+	else
+	{
+		debug_printf("pPciDev=%d\n", pProcessorUnitDev->pPciDev);
+	}
+
+	if (NULL == pProcessorUnitDev->pPciBarReg)
+	{
+		debug_printf("pPciBarReg==NULL\n");
+	}
+	else
+	{
+		debug_printf("pPciBarReg=%d\n", pProcessorUnitDev->pPciBarReg);
+	}
+
+	debug_printf("minor=%d,pciDev=%x,pciBarReg=%x,pProcessorUnitDev=%x\n", pProcessorUnitDev->devMinor, *(pProcessorUnitDev->pPciDev),
+			*(pProcessorUnitDev->pPciBarReg), *pProcessorUnitDev);
+	debug_printf("minor=%d\n", (*pProcessorUnitDev).devMinor);
+
 	int retLinkValue = 0;
 
-	retLinkValue = LinkLayer_Open(&pHandle, g_pPcieDev, g_pPcieBarReg, NULL);
+	//retLinkValue = LinkLayer_Open(&pHandle, g_pPcieDev, g_pPcieBarReg, NULL);
+	LinkLayerHandler *pHandle = (LinkLayerHandler *) kmalloc(sizeof(LinkLayerHandler), GFP_KERNEL);
+	if (NULL == pHandle)
+	{
+		retVal = -1;
+		debug_printf("error:kmalloc\n");
+		return (retVal);
+	}
+	//retLinkValue = LinkLayer_Open(pHandle, pProcessorUnitDev->pPciDev, pProcessorUnitDev->pPciBarReg, NULL);
+	retLinkValue = LinkLayer_Open(pHandle, pProcessorUnitDev);
 	if (retLinkValue <= 0)
 	{
-		debug_printf("error:LinkLayer_Open");
+		debug_printf("error:LinkLayer_Open\n");
 		return (retLinkValue);
 	}
 
-	file->private_data = pHandle;
+	filp->private_data = pHandle;
 
 #if 0
 // wait DSP ready.
@@ -377,7 +410,7 @@ int DPU_open(struct inode *node, struct file *filp)
 #endif
 	debug_printf("successful,openChipMask=%x\n", retLinkValue);
 	return (retLinkValue);
-#endif
+
 }
 
 static void DPU_close(struct file *pFile)

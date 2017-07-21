@@ -23,8 +23,6 @@ typedef int intptr_t;
 # endif
 #endif
 
-
-
 typedef struct __tagPcieBarReg
 {
 	uint32_t *regVirt;
@@ -45,10 +43,14 @@ typedef struct __tagPcieBarReg
 
 typedef struct _tagProcessorUnitDev
 {
-	struct cdev *pCharDev;
+	//if using the container,we should not usr the point.
+	//struct cdev *pCharDev;
+
 	struct pci_dev *pPciDev;
 	pcieBarReg_t *pPciBarReg;
 	int devMinor;
+	struct cdev charDev;
+
 } ProcessorUnitDev_t;
 
 // TODO: rename the element:PC_bootStatusReg,PC_writeStatusReg...,PC_bootCtlReg.
