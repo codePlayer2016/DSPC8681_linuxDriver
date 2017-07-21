@@ -283,7 +283,7 @@ int dspMemoryMap(uint32_t *pRegVirt, uint32_t pcAddr, uint32_t size)
  *  @param[in] pPcieBarReg		self-defined pcie bar structure data point.
  *  @retval 0 : success, -1 : platform init fail, -2 : DSP receive code fail, -3 : crc check fail in the DSP-side.
  */
-int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int index)
+int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int processorIndex)
 {
 
 	//registerTable *pRegisterTable = NULL;
@@ -320,7 +320,7 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int index)
 	addrMap2DSPPCIE = (uint32_t)(DMAVirAddr + memOffset);
 
 	pRegisterTable = (LinkLayerRegisterTable *) addrMap2DSPPCIE;
-	gpRegisterTable[index] = pRegisterTable;
+	gpRegisterTable[processorIndex] = pRegisterTable;
 //pRegisterTable->registerPhyAddrInPc = alignPhyAddr;
 
 	set_memory_ro(addrMap2DSPPCIE, 1);
@@ -339,7 +339,7 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int index)
 
 	// pushs DSPInit code. devide into 4U
 	retValue = uploadProgram(pPcieBarReg, _thirdBLCode_U0, 0);
-//	switch (index)
+//	switch (processorIndex)
 //	{
 //	case 0:
 //		retValue = uploadProgram(pPcieBarReg, _thirdBLCode_U0, 0);

@@ -34,6 +34,6 @@
 // Register Length
 #define REG_LEN					(2*1024*4U)
 
-int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int index);
+int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int processorIndex);
 
 #endif /* INC_BOOTLOADER_H_ */

@@ -15,8 +15,6 @@
 #include <linux/kernel.h>
 #include "common.h"
 
-
-
 typedef struct __tagPcieDevNum
 {
 	dev_t devnum;

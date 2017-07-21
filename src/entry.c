@@ -119,6 +119,8 @@ int32_t gHostPciIrqNo = 0;
 //pcieBarReg_t pPcieBarReginit;
 //pcieBarReg_t *g_pPcieBarReg = &pPcieBarReginit;
 pcieBarReg_t *g_pPcieBarReg[4];
+
+ProcessorUnitDev_t *g_pProcessorUnitDev[4];
 extern LinkLayerRegisterTable *gpRegisterTable;
 static int DPU_probe(struct pci_dev *pci_dev, const struct pci_device_id *pci_id);
 static int DPU_open(struct inode *node, struct file *file);
@@ -192,14 +194,25 @@ int init_module(void)
 		request_irq(g_pPcieDev[chipIndex]->irq, ISR_handler, IRQF_SHARED, "TI 667x PCIE", &dummy);
 		debug_printf("irq is %d\n", g_pPcieDev[chipIndex]->irq);
 
+		g_pProcessorUnitDev[chipIndex] = (ProcessorUnitDev_t *) kzalloc(sizeof(ProcessorUnitDev_t), GFP_KERNEL);
+		g_pProcessorUnitDev[chipIndex]->devMinor = chipIndex;
+		g_pProcessorUnitDev[chipIndex]->pCharDev = pPcieCdev[chipIndex];
+		g_pProcessorUnitDev[chipIndex]->pPciBarReg = g_pPcieBarReg[chipIndex];
+		g_pProcessorUnitDev[chipIndex]->pPciDev = g_pPcieDev[chipIndex];
+		retValue = bootLoader(g_pPcieDev[chipIndex], g_pPcieBarReg[chipIndex], chipIndex);
+		if (0 != retValue)
+		{
+			debug_printf("%dth processor boot error\n", chipIndex);
+			continue;
+		}
 	}
 	// for test
-	retValue = bootLoader(g_pPcieDev[0], g_pPcieBarReg[0], 0);
-	if (0 != retValue)
-	{
-		debug_printf("bootLoader is error\n");
-		return (retValue);
-	}
+//	retValue = bootLoader(g_pPcieDev[0], g_pPcieBarReg[0], 0);
+//	if (0 != retValue)
+//	{
+//		debug_printf("bootLoader is error\n");
+//		return (retValue);
+//	}
 
 	return (retValue);
 }
@@ -207,6 +220,9 @@ int init_module(void)
 //void cleanup_module(struct pci_dev *pPcieDev, pcieBarReg_t *pPcieBarReg)
 void cleanup_module()
 {
+	//todo:
+	// unloadLoader();
+
 #if 0
 	struct pci_dev *pPcieDev = g_pPcieDev;
 	pcieBarReg_t *pPcieBarReg = g_pPcieBarReg;
@@ -319,8 +335,12 @@ int DPU_probe(struct pci_dev *pci_dev, const struct pci_device_id *pci_id)
 	return 0;
 }
 
-int DPU_open(struct inode *node, struct file *file)
+int DPU_open(struct inode *node, struct file *filp)
 {
+	ProcessorUnitDev_t *pProcessorUnitDev = container_of(node->i_cdev, ProcessorUnitDev_t, pCharDev);
+	filp->private_data = pProcessorUnitDev;
+	debug_printf("minor=%d\n", pProcessorUnitDev->devMinor);
+
 #if 0
 	int retLinkValue = 0;
 
@@ -334,8 +354,8 @@ int DPU_open(struct inode *node, struct file *file)
 	file->private_data = pHandle;
 
 #if 0
-	// wait DSP ready.
-	// TODO: polling in the app.
+// wait DSP ready.
+// TODO: polling in the app.
 	if (retLinkValue == 0)
 	{
 		retLinkValue = pollValue(&(pHandle->pRegisterTable->DPUBootStatus),
@@ -420,9 +440,9 @@ int DPU_mmap(struct file *filp, struct vm_area_struct *vma)
 	intptr_t *pAlignDMAVirtAddr = ((intptr_t *) (((LinkLayerHandler *) (filp->private_data))->pRegisterTable));
 	phyAddrFrameNO = virt_to_phys(pAlignDMAVirtAddr);
 	debug_printf("phyAddrFrameNO=0x%x\n", phyAddrFrameNO);
-	//phyAddrFrameNO =
-	//		((LinkLayerHandler *) (filp->private_data))->pRegisterTable->registerPhyAddrInPc;
-	//debug_printf("phyAddrFrameNO=0x%x\n", phyAddrFrameNO);
+//phyAddrFrameNO =
+//		((LinkLayerHandler *) (filp->private_data))->pRegisterTable->registerPhyAddrInPc;
+//debug_printf("phyAddrFrameNO=0x%x\n", phyAddrFrameNO);
 	phyAddrFrameNO = (phyAddrFrameNO >> PAGE_SHIFT);
 	rangeLength_vma = (vma->vm_end - vma->vm_start);
 
@@ -630,7 +650,7 @@ static irqreturn_t ISR_handler(int irq, void *arg)
 	{
 		printk("cyx receive interrupt from dsp\n");
 	}
-	//cheak zone status
+//cheak zone status
 	retValue = LinkLayer_CheckStatus(gpRegisterTable);
 	if (retValue == 0)
 	{

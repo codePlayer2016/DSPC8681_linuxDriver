@@ -23,6 +23,8 @@ typedef int intptr_t;
 # endif
 #endif
 
+
+
 typedef struct __tagPcieBarReg
 {
 	uint32_t *regVirt;
@@ -41,26 +43,34 @@ typedef struct __tagPcieBarReg
 	resource_size_t ddrLen;
 } pcieBarReg_t;
 
+typedef struct _tagProcessorUnitDev
+{
+	struct cdev *pCharDev;
+	struct pci_dev *pPciDev;
+	pcieBarReg_t *pPciBarReg;
+	int devMinor;
+} ProcessorUnitDev_t;
+
 // TODO: rename the element:PC_bootStatusReg,PC_writeStatusReg...,PC_bootCtlReg.
 /*
-typedef struct _tagRegisterTable
-{
-	// status registers. (4k)
-	uint32_t DPUBootStatus;
-	uint32_t writeStatus;
-	uint32_t readStatus;
-	uint32_t getPicNumers;
-	uint32_t failPicNumers;
-	uint32_t reserved0[0x1000 / 4 - 5];
+ typedef struct _tagRegisterTable
+ {
+ // status registers. (4k)
+ uint32_t DPUBootStatus;
+ uint32_t writeStatus;
+ uint32_t readStatus;
+ uint32_t getPicNumers;
+ uint32_t failPicNumers;
+ uint32_t reserved0[0x1000 / 4 - 5];
 
-	// control registers. (4k)
-	uint32_t DPUBootControl;
-	uint32_t writeControl;
-	uint32_t readControl;
-	uint32_t PC_urlNumsReg;
-	uint32_t reserved1[0x1000 / 4 - 4];
-} registerTable;
-*/
+ // control registers. (4k)
+ uint32_t DPUBootControl;
+ uint32_t writeControl;
+ uint32_t readControl;
+ uint32_t PC_urlNumsReg;
+ uint32_t reserved1[0x1000 / 4 - 4];
+ } registerTable;
+ */
 uint32_t byteTo32bits(uint8_t *pDspCode);
 
 int pollValue(uint32_t *pAddress, uint32_t pollVal, uint32_t maxPollCount);
