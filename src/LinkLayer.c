@@ -15,9 +15,9 @@
 
 //extern LinkLayerRegisterTable *gpRegisterTable;
 extern LinkLayerRegisterTable *gpRegisterTable[4];
-extern struct semaphore readSemaphore;
-extern struct semaphore writeSemaphore;
-extern struct semaphore gDspDpmOverSemaphore;
+extern struct semaphore readSemaphore[4];
+extern struct semaphore writeSemaphore[4];
+extern struct semaphore gDspDpmOverSemaphore[4];
 #if 0
 int LinkLayer_Open(LinkLayerHandler **ppHandle, struct pci_dev *pPciDev,
 		pcieBarReg_t *pPcieBarReg, struct semaphore *pWriteSemaphore)
@@ -70,6 +70,8 @@ int LinkLayer_Open(LinkLayerHandler *pLinkLayerHandle, ProcessorUnitDev_t *pProc
 	pcieBarReg_t *pPcieBarReg = pProcessorUnitDev->pPciBarReg;
 	int chipIndex = pProcessorUnitDev->devMinor;
 	uint32_t *regVirt = pPcieBarReg->regVirt;
+
+	debug_printf("pPcidev=%p,pPciBarReg=%p\n", pPciDev, pPcieBarReg);
 
 	pLinkLayerHandle->pRegisterTable = gpRegisterTable[chipIndex];
 	debug_printf("chipIndex=%d\n", chipIndex);
@@ -297,24 +299,24 @@ int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE io
 	return (retValue);
 }
 
-int LinkLayer_CheckStatus(LinkLayerRegisterTable *gpRegisterTable)
+int LinkLayer_CheckStatus(LinkLayerRegisterTable *gpRegisterTable, int chipIndex)
 {
 	int retValue = 0;
 
 	// dsp readctl is set init means:dsp receive buffer is empty. so pc can write to send buffer.
 	if ((gpRegisterTable->writeStatus) & PC_WAIT_WT)
 	{
-		up(&writeSemaphore);
+		up(&writeSemaphore[chipIndex]);
 	}
 	if ((gpRegisterTable->readStatus) & PC_WAIT_RD)
 
 	{
-		up(&readSemaphore);
+		up(&readSemaphore[chipIndex]);
 	}
 	if ((gpRegisterTable->dpmOverStatus) & PC_DPM_OVERSTATUS)
 
 	{
-		up(&gDspDpmOverSemaphore);
+		up(&gDspDpmOverSemaphore[chipIndex]);
 		//clear reg
 		gpRegisterTable->dpmOverControl |= 0x00000000;
 	}

@@ -101,9 +101,9 @@ MODULE_LICENSE("GPL v2");
 #define TIME_HZ (250)
 #define SEM_WAIT_JIFIIES (2*(TIME_HZ))
 
-struct semaphore readSemaphore, writeSemaphore;
+struct semaphore readSemaphore[4], writeSemaphore[4];
 // for DSP ready.
-struct semaphore gDspDpmOverSemaphore;
+struct semaphore gDspDpmOverSemaphore[4];
 
 struct pci_dev *g_pPcieDev[4];
 //cyx add, for the using of interrupt+poll
@@ -121,7 +121,7 @@ int32_t gHostPciIrqNo = 0;
 pcieBarReg_t *g_pPcieBarReg[4];
 
 ProcessorUnitDev_t *g_pProcessorUnitDev[4];
-extern LinkLayerRegisterTable *gpRegisterTable;
+extern LinkLayerRegisterTable *gpRegisterTable[4];
 static int DPU_probe(struct pci_dev *pci_dev, const struct pci_device_id *pci_id);
 static int DPU_open(struct inode *node, struct file *file);
 static int DPU_mmap(struct file *filp, struct vm_area_struct *vma);
@@ -141,11 +141,7 @@ int init_module(void)
 
 	int retValue = 0;
 	int pciDevCount = 0;
-	uint32_t dummy = 0;
-
-	sema_init(&writeSemaphore, 0);
-	sema_init(&readSemaphore, 0);
-	sema_init(&gDspDpmOverSemaphore, 0);
+	//uint32_t dummy = 0;
 
 	retValue = PCI_FindPciDevices(g_pPcieDev, &pciDevCount);
 	if (retValue != 0)
@@ -158,6 +154,9 @@ int init_module(void)
 	for (chipIndex = 0; chipIndex < pciDevCount; chipIndex++)
 	{
 		g_pPcieBarReg[chipIndex] = (pcieBarReg_t *) kzalloc(sizeof(pcieBarReg_t), GFP_KERNEL);
+		sema_init(&writeSemaphore[chipIndex], 0);
+		sema_init(&readSemaphore[chipIndex], 0);
+		sema_init(&gDspDpmOverSemaphore[chipIndex], 0);
 	}
 
 	pcieDevNum.count = pciDevCount;
@@ -173,8 +172,8 @@ int init_module(void)
 
 	for (chipIndex = pcieDevNum.minor_first; chipIndex < pcieDevNum.count; chipIndex++)
 	{
-		//pPcieCdev[chipIndex] = cdev_alloc();
-		pPcieCdev[chipIndex] = &(g_pProcessorUnitDev[chipIndex]->charDev);
+		pPcieCdev[chipIndex] = cdev_alloc();
+		//pPcieCdev[chipIndex] = &(g_pProcessorUnitDev[chipIndex]->charDev);
 		cdev_init(pPcieCdev[chipIndex], &DPU_fops);
 		pPcieCdev[chipIndex]->owner = THIS_MODULE;
 		cdev_add(pPcieCdev[chipIndex], MKDEV(pcieDevNum.major, chipIndex), 1);
@@ -193,13 +192,14 @@ int init_module(void)
 		retValue = PCI_setMaster(g_pPcieDev[chipIndex]);
 		PCI_setInBound(g_pPcieDev[chipIndex], g_pPcieBarReg[chipIndex]);
 		PCI_EnableDspInterrupt(g_pPcieBarReg[chipIndex]);
-		//request_irq(16, ISR_handler, IRQF_SHARED, "TI 667x PCIE", &dummy);
-		request_irq(g_pPcieDev[chipIndex]->irq, ISR_handler, IRQF_SHARED, "TI 667x PCIE", &dummy);
+
+		//request_irq(g_pPcieDev[chipIndex]->irq, ISR_handler, IRQF_SHARED, "TI 667x PCIE", &dummy);
+		request_irq(g_pPcieDev[chipIndex]->irq, ISR_handler, IRQF_SHARED, "TI 667x PCIE", &g_pPcieDev[chipIndex]);
 		//debug_printf("irq is %d\n", g_pPcieDev[chipIndex]->irq);
 
 		g_pProcessorUnitDev[chipIndex] = (ProcessorUnitDev_t *) kzalloc(sizeof(ProcessorUnitDev_t), GFP_KERNEL);
 		g_pProcessorUnitDev[chipIndex]->devMinor = chipIndex;
-		//g_pProcessorUnitDev[chipIndex]->pCharDev = pPcieCdev[chipIndex];
+		g_pProcessorUnitDev[chipIndex]->pCharDev = pPcieCdev[chipIndex];
 		g_pProcessorUnitDev[chipIndex]->pPciBarReg = g_pPcieBarReg[chipIndex];
 		g_pProcessorUnitDev[chipIndex]->pPciDev = g_pPcieDev[chipIndex];
 		retValue = bootLoader(g_pPcieDev[chipIndex], g_pPcieBarReg[chipIndex], chipIndex);
@@ -208,9 +208,15 @@ int init_module(void)
 			debug_printf("%dth processor boot error\n", chipIndex);
 			continue;
 		}
-		debug_printf("*g_pProcessorUnitDev[%d]=%x,pciDev=%x,pciBarReg=%x\n", chipIndex, *g_pProcessorUnitDev[chipIndex], *g_pPcieDev[chipIndex],
-				*g_pPcieBarReg[chipIndex]);
+//		debug_printf("*g_pProcessorUnitDev[%d]=%x,pciDev=%x,pciBarReg=%x\n", chipIndex, *(g_pProcessorUnitDev[chipIndex]), *(g_pPcieDev[chipIndex]),
+//				*(g_pPcieBarReg[chipIndex]));
+		debug_printf("g_pProcessorUnitDev[%d]=%p,pPcidev=%p,pPciBarReg=%p\n", chipIndex, g_pProcessorUnitDev[chipIndex],
+				g_pProcessorUnitDev[chipIndex]->pPciDev, g_pProcessorUnitDev[chipIndex]->pPciBarReg);
 	}
+
+	//debug_printf("minor=%d,pciDev=%x,pciBarReg=%x,pProcessorUnitDev=%x\n", g_pProcessorUnitDev[3]->devMinor,
+	//		*(g_pProcessorUnitDev[3]->pPciDev), *(g_pProcessorUnitDev[3]->pPciBarReg), *(g_pProcessorUnitDev[3]));
+
 	return (retValue);
 }
 
@@ -335,36 +341,15 @@ int DPU_probe(struct pci_dev *pci_dev, const struct pci_device_id *pci_id)
 int DPU_open(struct inode *node, struct file *filp)
 {
 	int retVal = 0;
-	if (NULL == node->i_cdev)
-	{
-		debug_printf("cdev==null\n");
-	}
 
-	debug_printf("dev_t=%x,devMinor=%x,fileName=%s cdev=%x\n", node->i_rdev, MINOR(node->i_rdev), filp->f_path.dentry->d_name.name, *(node->i_cdev));
+	int chipIndex = MINOR(node->i_rdev);
 
-	ProcessorUnitDev_t *pProcessorUnitDev = container_of(node->i_cdev, ProcessorUnitDev_t, charDev);
+	debug_printf("devMajor=%x,fileName=%s,chipIndex=%d\n", MAJOR(node->i_rdev), filp->f_path.dentry->d_name.name, chipIndex);
 
-	if (NULL == pProcessorUnitDev->pPciDev)
-	{
-		debug_printf("pPciDev==NULL\n");
-	}
-	else
-	{
-		debug_printf("pPciDev=%d\n", pProcessorUnitDev->pPciDev);
-	}
+	//ProcessorUnitDev_t *pProcessorUnitDev = container_of(node->i_cdev, ProcessorUnitDev_t, charDev);
+	ProcessorUnitDev_t *pProcessorUnitDev = g_pProcessorUnitDev[chipIndex];
 
-	if (NULL == pProcessorUnitDev->pPciBarReg)
-	{
-		debug_printf("pPciBarReg==NULL\n");
-	}
-	else
-	{
-		debug_printf("pPciBarReg=%d\n", pProcessorUnitDev->pPciBarReg);
-	}
-
-	debug_printf("minor=%d,pciDev=%x,pciBarReg=%x,pProcessorUnitDev=%x\n", pProcessorUnitDev->devMinor, *(pProcessorUnitDev->pPciDev),
-			*(pProcessorUnitDev->pPciBarReg), *pProcessorUnitDev);
-	debug_printf("minor=%d\n", (*pProcessorUnitDev).devMinor);
+	debug_printf("pProcessorUnitDev=%p\n", pProcessorUnitDev);
 
 	int retLinkValue = 0;
 
@@ -378,11 +363,6 @@ int DPU_open(struct inode *node, struct file *filp)
 	}
 	//retLinkValue = LinkLayer_Open(pHandle, pProcessorUnitDev->pPciDev, pProcessorUnitDev->pPciBarReg, NULL);
 	retLinkValue = LinkLayer_Open(pHandle, pProcessorUnitDev);
-	if (retLinkValue <= 0)
-	{
-		debug_printf("error:LinkLayer_Open\n");
-		return (retLinkValue);
-	}
 
 	filp->private_data = pHandle;
 
@@ -408,7 +388,7 @@ int DPU_open(struct inode *node, struct file *filp)
 		retValue = retLinkValue;
 	}
 #endif
-	debug_printf("successful,openChipMask=%x\n", retLinkValue);
+	debug_printf("successful,registable=%p\n", pHandle->pRegisterTable);
 	return (retLinkValue);
 
 }
@@ -469,8 +449,22 @@ int DPU_mmap(struct file *filp, struct vm_area_struct *vma)
 		retVal = openChipMask;
 		return (retVal);
 	}
-#if 0
+#endif
+#if 1
+
+	int retVal = 0;
+	int stateCode = 0;
+	uint32_t phyAddrFrameNO;
+	uint32_t rangeLength_vma;
+
+	int chipIndex = 0;
+	char devNameStr[] = "chipUnit%d";
+	sscanf(filp->f_path.dentry->d_name.name, devNameStr, &chipIndex);
+	debug_printf("chipIndex=%u\n", chipIndex);
+
 	intptr_t *pAlignDMAVirtAddr = ((intptr_t *) (((LinkLayerHandler *) (filp->private_data))->pRegisterTable));
+	debug_printf("registable=%p\n", pAlignDMAVirtAddr);
+
 	phyAddrFrameNO = virt_to_phys(pAlignDMAVirtAddr);
 	debug_printf("phyAddrFrameNO=0x%x\n", phyAddrFrameNO);
 //phyAddrFrameNO =
@@ -489,174 +483,175 @@ int DPU_mmap(struct file *filp, struct vm_area_struct *vma)
 	else
 	{
 		debug_printf("mmap finished\n");
-		retValue = stateCode;
+		retVal = stateCode;
 	}
 
-	return (retValue);
+	return (retVal);
 #endif
-#endif
+
 }
 
 long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
-#if 0
+#if 1
 	long retValue = 0;
+	uint8_t chipIndex = 0;
+	char devNameStr[] = "chipUnit%d";
+	sscanf(filp->f_path.dentry->d_name.name, devNameStr, &chipIndex);
+	debug_printf("chipIndex=%u\n", chipIndex);
+
 	LinkLayerHandler *pLinkLayer = (LinkLayerHandler *) (filp->private_data);
 
 	int32_t stateCode = 0;
 
 	switch (cmd)
 	{
-		case DPU_IO_CMD_CONFIRM:
+	case DPU_IO_CMD_CONFIRM:
+	{
+		stateCode = LinkLayer_Confirm(pLinkLayer, (LINKLAYER_IO_TYPE) arg);
+
+		if (stateCode != 0)
 		{
-			stateCode = LinkLayer_Confirm(pLinkLayer, (LINKLAYER_IO_TYPE) arg);
-
-			if (stateCode != 0)
-			{
-				printk("LinkLayer_Confirm failed: %x\n", stateCode);
-			}
-			else
-			{
-			}
-
-			break;
+			printk("LinkLayer_Confirm failed: %x\n", stateCode);
+		}
+		else
+		{
 		}
 
-		case DPU_IO_CMD_WAITBUFFERREADY:
+		break;
+	}
+
+	case DPU_IO_CMD_WAITBUFFERREADY:
+	{
+		DPUDriver_WaitBufferReadyParam *pParam = (DPUDriver_WaitBufferReadyParam *) arg;
+		stateCode = LinkLayer_WaitBufferReady(pLinkLayer, pParam->waitType, pParam->pendTime);
+		if (stateCode != 0)
 		{
-			DPUDriver_WaitBufferReadyParam *pParam =
-			(DPUDriver_WaitBufferReadyParam *) arg;
-			stateCode = LinkLayer_WaitBufferReady(pLinkLayer, pParam->waitType,
-					pParam->pendTime);
-			if (stateCode != 0)
-			{
-				debug_printf("LinkLayer_WaitBufferReady timeout: %x\n", stateCode);
-			}
-			else
-			{
-				debug_printf("linklayer wait buffer finished\n");
-			}
-			copy_to_user((pParam->pBufStatus), &stateCode, sizeof(int));
-			break;
+			debug_printf("LinkLayer_WaitBufferReady timeout: %x\n", stateCode);
+		}
+		else
+		{
+			debug_printf("linklayer wait buffer finished\n");
+		}
+		copy_to_user((pParam->pBufStatus), &stateCode, sizeof(int));
+		break;
+	}
+
+	case DPU_IO_CMD_CHANGEBUFFERSTATUS:
+	{
+		int *flag = (int *) arg;
+		debug_printf("DPU_IO_CMD_CHANGEBUFFERSTATUS:the *flag=%d\n", *flag);
+		stateCode = LinkLayer_ChangeBufferStatus(pLinkLayer, *flag);
+
+		if (stateCode != 0)
+		{
+			printk("LinkLayer_Confirm failed: %x\n", stateCode);
+		}
+		else
+		{
 		}
 
-		case DPU_IO_CMD_CHANGEBUFFERSTATUS:
-		{
-			int *flag = (int *) arg;
-			debug_printf("DPU_IO_CMD_CHANGEBUFFERSTATUS:the *flag=%d\n", *flag);
-			stateCode = LinkLayer_ChangeBufferStatus(pLinkLayer, *flag);
-
-			if (stateCode != 0)
-			{
-				printk("LinkLayer_Confirm failed: %x\n", stateCode);
-			}
-			else
-			{
-			}
-
-			break;
-		}
+		break;
+	}
 		// trigger the interrupt to DSP,make the DSP to start DPM process the picture.
-		case DPU_IO_CMD_INTERRUPT:
-		{
-			printk("trigger a interrupt to DSP\n");
-			uint32_t *pDspMappedRegVirt = g_pPcieBarReg->regVirt;
-			iowrite32(1, pDspMappedRegVirt + LEGACY_A_IRQ_STATUS_RAW / 4);
-			break;
-		}
+	case DPU_IO_CMD_INTERRUPT:
+	{
+		printk("trigger a interrupt to DSP\n");
+		//uint32_t *pDspMappedRegVirt = g_pPcieBarReg->regVirt;
+		uint32_t *pDspMappedRegVirt = g_pPcieBarReg[chipIndex]->regVirt;
+		iowrite32(1, pDspMappedRegVirt + LEGACY_A_IRQ_STATUS_RAW / 4);
+		break;
+	}
 //////////////////////////////////////////////////////////////////////////
-		case DPU_IO_CMD_WAITDPM:
-		{
-			printk("wait the DSP trigger the host\n");
-			down(&gDspDpmOverSemaphore);
-			break;
+	case DPU_IO_CMD_WAITDPM:
+	{
+		printk("wait the DSP trigger the host\n");
+		down(&gDspDpmOverSemaphore[chipIndex]);
+		break;
 
-		}
-		case DPU_IO_CMD_WAITDPMSTART:
+	}
+	case DPU_IO_CMD_WAITDPMSTART:
+	{
+		printk("wait the DSP dsp start\n");
+		DPUDriver_WaitBufferReadyParam *pParam = (DPUDriver_WaitBufferReadyParam *) arg;
+		stateCode = LinkLayer_WaitBufferReady(pLinkLayer, pParam->waitType, pParam->pendTime);
+		if (stateCode != 0)
 		{
-			printk("wait the DSP dsp start\n");
-			DPUDriver_WaitBufferReadyParam *pParam =
-			(DPUDriver_WaitBufferReadyParam *) arg;
-			stateCode = LinkLayer_WaitBufferReady(pLinkLayer, pParam->waitType,
-					pParam->pendTime);
-			if (stateCode != 0)
-			{
-				debug_printf("LinkLayer_WaitDpmReady timeout: %x\n", stateCode);
-			}
-			else
-			{
-				debug_printf("LinkLayer_WaitDpmReady finished\n");
-			}
-			break;
+			debug_printf("LinkLayer_WaitDpmReady timeout: %x\n", stateCode);
+		}
+		else
+		{
+			debug_printf("LinkLayer_WaitDpmReady finished\n");
+		}
+		break;
 
-		}
-		case DPU_IO_CMD_WRITE_TIMEOUT:
-		{
-			debug_printf("poll write timeout,we start to use interrupt for pc\n");
-			down(&writeSemaphore);
-			break;
-		}
-		case DPU_IO_CMD_READ_TIMEOUT:
-		{
-			debug_printf("poll read timeout,we start to use interrupt for pc\n");
-			down(&readSemaphore);
-			break;
-		}
-		case DPU_IO_CMD_CHANGEREG:
-		{
-			int *flag = (int *) arg;
-			debug_printf("DPU_IO_CMD_CHANGEREG:the *flag=%d\n", *flag);
-			stateCode = LinkLayer_ChangeBufferStatus(pLinkLayer, *flag);
+	}
+	case DPU_IO_CMD_WRITE_TIMEOUT:
+	{
+		debug_printf("poll write timeout,we start to use interrupt for pc\n");
+		down(&writeSemaphore[chipIndex]);
+		break;
+	}
+	case DPU_IO_CMD_READ_TIMEOUT:
+	{
+		debug_printf("poll read timeout,we start to use interrupt for pc\n");
+		down(&readSemaphore[chipIndex]);
+		break;
+	}
+	case DPU_IO_CMD_CHANGEREG:
+	{
+		int *flag = (int *) arg;
+		debug_printf("DPU_IO_CMD_CHANGEREG:the *flag=%d\n", *flag);
+		stateCode = LinkLayer_ChangeBufferStatus(pLinkLayer, *flag);
 
-			if (stateCode != 0)
-			{
-				printk("LinkLayer_ChangeBufferStatus failed: %x\n", stateCode);
-			}
-			else
-			{
-				printk("LinkLayer_ChangeBufferStatus success\n");
-			}
-			break;
-		}
-		case DPU_IO_CMD_CHANGOVERREG:
+		if (stateCode != 0)
 		{
-			int *flag = (int *) arg;
-			debug_printf("DPU_IO_CMD_CHANGOVERREG:the *flag=%d\n", *flag);
-			stateCode = LinkLayer_ChangeBufferStatus(pLinkLayer, *flag);
-			if (stateCode != 0)
-			{
-				printk("LinkLayer_ChangeBufferStatus failed: %x\n", stateCode);
-			}
-			else
-			{
-				printk("LinkLayer_ChangeBufferStatus success\n");
-			}
-			break;
+			printk("LinkLayer_ChangeBufferStatus failed: %x\n", stateCode);
 		}
-		case DPU_IO_CMD_CHECKDPMALLOVER:
+		else
 		{
-			DPUDriver_WaitBufferReadyParam *pParam =
-			(DPUDriver_WaitBufferReadyParam *) arg;
-			stateCode = LinkLayer_CheckDpmStatus(pLinkLayer);
-			if (stateCode != 0)
-			{
-				debug_printf("LinkLayer_CheckDpmStatus timeout: %x\n", stateCode);
-			}
-			else
-			{
-				debug_printf("LinkLayer_CheckDpmStatus finished: %x\n", stateCode);
-			}
-			copy_to_user((pParam->pBufStatus), &stateCode, sizeof(int));
-			break;
+			printk("LinkLayer_ChangeBufferStatus success\n");
+		}
+		break;
+	}
+	case DPU_IO_CMD_CHANGOVERREG:
+	{
+		int *flag = (int *) arg;
+		debug_printf("DPU_IO_CMD_CHANGOVERREG:the *flag=%d\n", *flag);
+		stateCode = LinkLayer_ChangeBufferStatus(pLinkLayer, *flag);
+		if (stateCode != 0)
+		{
+			printk("LinkLayer_ChangeBufferStatus failed: %x\n", stateCode);
+		}
+		else
+		{
+			printk("LinkLayer_ChangeBufferStatus success\n");
+		}
+		break;
+	}
+	case DPU_IO_CMD_CHECKDPMALLOVER:
+	{
+		DPUDriver_WaitBufferReadyParam *pParam = (DPUDriver_WaitBufferReadyParam *) arg;
+		stateCode = LinkLayer_CheckDpmStatus(pLinkLayer);
+		if (stateCode != 0)
+		{
+			debug_printf("LinkLayer_CheckDpmStatus timeout: %x\n", stateCode);
+		}
+		else
+		{
+			debug_printf("LinkLayer_CheckDpmStatus finished: %x\n", stateCode);
+		}
+		copy_to_user((pParam->pBufStatus), &stateCode, sizeof(int));
+		break;
 
-		}
-		default:
-		{
-			retValue = 0;
-			printk("other operation cmd is %d\n", cmd);
+	}
+	default:
+	{
+		retValue = 0;
+		printk("other operation cmd is %d\n", cmd);
 
-			break;
-		}
+		break;
+	}
 
 	}
 
@@ -673,18 +668,20 @@ int DPU_release(struct pci_dev* pdev)
 
 static irqreturn_t ISR_handler(int irq, void *arg)
 {
-#if 0
+
+	int chipIndex = (int) (((arg - (void *) g_pPcieDev)) / sizeof(uintptr_t));
+
 	uint32_t status;
-	uint32_t retValue;
+	int retValue;
 	debug_printf("ISR_handler function irq is %d\n", irq);
 
-	status = HAL_CheckPciInterrupt(g_pPcieBarReg);
+	status = HAL_CheckPciInterrupt(g_pPcieBarReg[chipIndex]);
 	if (status == 1)
 	{
 		printk("cyx receive interrupt from dsp\n");
 	}
 //cheak zone status
-	retValue = LinkLayer_CheckStatus(gpRegisterTable);
+	retValue = LinkLayer_CheckStatus(gpRegisterTable[chipIndex], chipIndex);
 	if (retValue == 0)
 	{
 		debug_printf("LinkLayer_CheckStatus success\n");
@@ -694,6 +691,5 @@ static irqreturn_t ISR_handler(int irq, void *arg)
 		debug_printf("LinkLayer_CheckStatus error\n");
 	}
 
-	PCI_ClearDspInterrupt(g_pPcieBarReg);
-#endif
+	PCI_ClearDspInterrupt(g_pPcieBarReg[chipIndex]);
 }

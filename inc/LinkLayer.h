@@ -98,7 +98,7 @@ int LinkLayer_WaitBufferReady(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioTyp
 int LinkLayer_Confirm(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioType);
 
 int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioType);
-int LinkLayer_CheckStatus(LinkLayerRegisterTable *gpRegisterTable);
+int LinkLayer_CheckStatus(LinkLayerRegisterTable *gpRegisterTable, int chipIndex);
 int LinkLayer_ChangeDpmReg(LinkLayerHandler *pHandle);
 int LinkLayer_ClearInterrupt(LinkLayerHandler *pHandle);
 int LinkLayer_WaitDpmOver(LinkLayerHandler *pHandle, uint32_t pendtime);

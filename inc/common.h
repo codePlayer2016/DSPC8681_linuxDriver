@@ -43,13 +43,12 @@ typedef struct __tagPcieBarReg
 
 typedef struct _tagProcessorUnitDev
 {
-	//if using the container,we should not usr the point.
-	//struct cdev *pCharDev;
-
+	//if using the container,we should not usr the point but the c is not support this.
+	struct cdev *pCharDev;
 	struct pci_dev *pPciDev;
 	pcieBarReg_t *pPciBarReg;
 	int devMinor;
-	struct cdev charDev;
+//struct cdev *charDev;
 
 } ProcessorUnitDev_t;
 
