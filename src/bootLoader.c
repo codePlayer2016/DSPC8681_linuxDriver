@@ -17,6 +17,7 @@
 //#include "DSP_TBL_6678_U2.h"
 //#include "DSP_TBL_6678_U3.h"
 #include "DPUCore_6678.h"
+#include "app4Core0_6678.h"
 //#include "DPUCore0_6678.h"
 //#include "dspCodeImg.h"
 #include "LinkLayer.h"
@@ -28,13 +29,11 @@
 #define DMA_TRANSFER_SIZE            (0x400000U)
 LinkLayerRegisterTable *gpRegisterTable[4];
 
-
 //
 // small tools.
 //
 
-uint32_t writeDSPMemory(pcieBarReg_t *pPcieBarReg, uint32_t coreNum,
-		uint32_t dspMemAddr, uint32_t *buffer, uint32_t length)
+uint32_t writeDSPMemory(pcieBarReg_t *pPcieBarReg, uint32_t coreNum, uint32_t dspMemAddr, uint32_t *buffer, uint32_t length)
 {
 	uint32_t i, offset, tempReg = 0;
 	uint32_t *ptr;
@@ -99,8 +98,7 @@ uint32_t writeDSPMemory(pcieBarReg_t *pPcieBarReg, uint32_t coreNum,
 		}
 		break;
 	default:
-		printk(
-				"Use coreNum 0-7 for core 0-7 of EVMC6678L, or coreNum 0-3 for core 0-3 of EVMC6670L; coreNum 8 for MSMC and coreNum 9 for DDR.\n");
+		printk("Use coreNum 0-7 for core 0-7 of EVMC6678L, or coreNum 0-3 for core 0-3 of EVMC6670L; coreNum 8 for MSMC and coreNum 9 for DDR.\n");
 		return 0;
 		break;
 	}
@@ -123,8 +121,7 @@ uint32_t writeDSPMemory(pcieBarReg_t *pPcieBarReg, uint32_t coreNum,
 	return length;
 }
 
-int uploadProgram(pcieBarReg_t *pPcieBarReg, uint8_t *pDspImgArray,
-		uint8_t coreNum)
+int uploadProgram(pcieBarReg_t *pPcieBarReg, uint8_t *pDspImgArray, uint8_t coreNum)
 {
 	int retValue = 0;
 
@@ -204,8 +201,7 @@ int uploadProgram(pcieBarReg_t *pPcieBarReg, uint8_t *pDspImgArray,
 			tempArray[j] = byteTo32bits(pDspImg);
 			pDspImg += 4;
 		}
-		writeDSPMemory(pPcieBarReg, newCoreNum, secStartAddr, tempArray,
-				remainder);
+		writeDSPMemory(pPcieBarReg, newCoreNum, secStartAddr, tempArray, remainder);
 
 		// Get the next sect secSize
 		secSize = byteTo32bits(pDspImg);
@@ -223,8 +219,7 @@ int uploadProgram(pcieBarReg_t *pPcieBarReg, uint8_t *pDspImgArray,
 		retValue = -1;
 	}
 #endif
-	printk(
-			"bootEntryAddr=%d\n",bootEntryAddr);
+	printk("bootEntryAddr=%d\n", bootEntryAddr);
 	return (retValue);
 }
 
@@ -306,8 +301,7 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int processor
 	dma_addr_t DMAPhyAddr = 0;
 
 // alloc DMA zone.
-	DMAVirAddr = (uint8_t*) dma_alloc_coherent(&pPciDev->dev, DMA_TRANSFER_SIZE,
-			&DMAPhyAddr, GFP_KERNEL);
+	DMAVirAddr = (uint8_t*) dma_alloc_coherent(&pPciDev->dev, DMA_TRANSFER_SIZE, &DMAPhyAddr, GFP_KERNEL);
 
 // because of PCIE Outbound windows size is 1M.
 	alignPhyAddr = (DMAPhyAddr & 0xfff00000);
@@ -359,8 +353,7 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int processor
 // waits DSPInitReady.
 	if (retValue == 0)
 	{
-		retPollVal = pollValue(&(pRegisterTable->DPUBootStatus), DSP_INIT_READY,
-				0xffffffff);
+		retPollVal = pollValue(&(pRegisterTable->DPUBootStatus), DSP_INIT_READY, 0xffffffff);
 	}
 	else
 	{
@@ -369,37 +362,99 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int processor
 		return (retValue);
 	}
 	debug_printf("after pollValue uploadProgram\n");
-// pushs the data to the DSP.
-// TODO:
-	/*
-	 *  int coreIndex=0;
-	 *   for(coreIndex=0;coreIndex<8;coreIndex++)
-	 *   {
-	 *   	//todo:
-	 *   	// push the codeApp
-	 *   }
-	 **/
+
+//	int writeTOdsp()
+//	{
+//		//updateWriteBuffer(resetBeforeWrite);
+//		//writeOutBuffer();
+//		//updateWriteBuffer(writeFinished);
+//
+//		//waitDSPread();
+//	}
+//	int readFromPC()
+//	{
+//		//waitPCwrite();
+//		//updateReadBuffer(resetBeforeRead);
+//		//readInBuffer();
+//		//updateReadBuffer(readFinished);
+//		//waitWriteBufferReset();
+//	}
 	int coreIndex = 0;
-	for (coreIndex = 0; coreIndex < 8; coreIndex++)
+	uint32_t DPUCoreLength = ((sizeof(_app4Core0) + 3) / 4) * 4;
+	debug_printf("the CodeLength = %x \n", DPUCoreLength);
+	//* 1.updateWriteBuffer(resetBeforeWrite);
+	(pRegisterTable->pushCodeControl) = PC_PUSHCODE_RESET;
+
+	//* 2.waitDSPreadBufferReset();
+	retPollVal = pollValue(&(pRegisterTable->pushCodeStatus),
+	DSP_GETCODE_RESET, 0xffffffff);
+	if (retPollVal == 0)
 	{
-		uint32_t DPUCoreLength = ((sizeof(_DPUCore) + 3) / 4) * 4;
+		//(pRegisterTable->DPUBootControl) = PC_PUSHCODE_RESET;
+		debug_printf("polling dsp readbuffer successful\n");
+	}
+	else
+	{
+		retValue = -2;
+		debug_printf("error\n");
+		return (retValue);
+	}
+
+	//* 3.writeOutBuffer().
+	memcpy(pPutDSPImgZone, _app4Core0, DPUCoreLength);
+
+	//* 4.updateWriteBuffer(finished);
+	(pRegisterTable->pushCodeControl) = PC_PUSHCODE_FINISH;
+
+	//* 5.waitDSPread();
+	retPollVal = pollValue(&(pRegisterTable->pushCodeStatus),
+	DSP_GETCODE_FINISH, 0xffffffff);
+	if (retPollVal == 0)
+	{
+		//(pRegisterTable->DPUBootControl) = PC_PUSHCODE_RESET;
+		debug_printf("DSP get DSPImg successful \n");
+	}
+	else
+	{
+		retValue = -2;
+		debug_printf("error\n");
+		return (retValue);
+	}
+
+	(pRegisterTable->pushCodeControl) = PC_PUSHCODE_RESET;
+	for (coreIndex = 1; coreIndex < 8; coreIndex++)
+	{
+		DPUCoreLength = ((sizeof(_DPUCore) + 3) / 4) * 4;
 		debug_printf("the CodeLength = %x \n", DPUCoreLength);
+		//* 1.updateWriteBuffer(resetBeforeWrite);
+		(pRegisterTable->pushCodeControl) = PC_PUSHCODE_RESET;
+
+		//* 2.waitDSPreadBufferReset();
+		retPollVal = pollValue(&(pRegisterTable->pushCodeStatus),
+		DSP_GETCODE_RESET, 0xffffffff);
+
+		//* 3.writeOutBuffer().
 		memcpy(pPutDSPImgZone, _DPUCore, DPUCoreLength);
 
-		(pRegisterTable->DPUBootControl) = PC_PUSHCODE_FINISH;
-		retPollVal = pollValue(&(pRegisterTable->DPUBootStatus),
+		//* 4.updateWriteBuffer(finished);
+		(pRegisterTable->pushCodeControl) = PC_PUSHCODE_FINISH;
+
+		//* 5.waitDSPread();
+		retPollVal = pollValue(&(pRegisterTable->pushCodeStatus),
 		DSP_GETCODE_FINISH, 0xffffffff);
 		if (retPollVal == 0)
 		{
-			debug_printf("DSP get DSPImg successful \n");
+			//(pRegisterTable->DPUBootControl) = PC_PUSHCODE_RESET;
+			debug_printf("coreIndex=%d,DSP get DSPImg successful \n", coreIndex);
 		}
 		else
 		{
 			retValue = -2;
-			debug_printf("DPUBootStatus=%x\n", (pRegisterTable->DPUBootStatus));
+			debug_printf("error\n");
 			return (retValue);
 		}
 	}
+	(pRegisterTable->pushCodeControl) = PC_PUSHCODE_RESET;
 
 #if 0	// for one core
 	if (retPollVal == 0)
@@ -465,18 +520,15 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int processor
 	//compare SetMultiCoreBootStatus to MulticoreCoreBootStatus to know if the core allBoot or not.
 	if (retPollVal == 0)
 	{
-		retPollVal = pollCompareValue(&(pRegisterTable->SetMultiCoreBootStatus),
-				&(pRegisterTable->MultiCoreBootStatus), 0xffffffff);
+		retPollVal = pollCompareValue(&(pRegisterTable->SetMultiCoreBootStatus), &(pRegisterTable->MultiCoreBootStatus), 0xffffffff);
 		if (retPollVal == 0)
 		{
-			debug_printf(
-					"compare SetMultiCoreBootStatus to MulticoreCoreBootStatus successful \n");
+			debug_printf("compare SetMultiCoreBootStatus to MulticoreCoreBootStatus successful \n");
 		}
 		else
 		{
 			retValue = -4;
-			debug_printf("pRegisterTable->MultiCoreBootStatus=%x\n",
-					(pRegisterTable->MultiCoreBootStatus));
+			debug_printf("pRegisterTable->MultiCoreBootStatus=%x\n", (pRegisterTable->MultiCoreBootStatus));
 			return (retValue);
 		}
 	}
@@ -505,8 +557,7 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int processor
 	{
 	}
 #endif
-	debug_printf("LINKLAYER_Open end,DPUBootStatus=%x\n",
-			pRegisterTable->DPUBootStatus);
+	debug_printf("LINKLAYER_Open end,DPUBootStatus=%x\n", pRegisterTable->DPUBootStatus);
 
 	return (retValue);
 }

@@ -51,6 +51,7 @@ typedef enum __tagLINKLAYER_IO_TYPE
 	LINKLAYER_IO_OVER = 5
 } LINKLAYER_IO_TYPE;
 // TODO: merge the structure in LinkLayer.h and common.h
+#if 0
 typedef struct _tagLinkLayerRegisterTable
 {
 	// status registers. (4k)
@@ -71,10 +72,39 @@ typedef struct _tagLinkLayerRegisterTable
 	uint32_t writeControl;
 	uint32_t readControl;
 	uint32_t PC_urlNumsReg;
-	uint32_t modelType; //1:motor 2:car 3:person
+	uint32_t modelType;//1:motor 2:car 3:person
 	uint32_t dpmOverControl;
 	uint32_t dpmStartControl;
 	uint32_t reserved1[0x1000 / 4 - 6];
+}LinkLayerRegisterTable;
+#endif
+
+typedef struct _tagLinkLayerRegisterTable
+{
+	// status registers. (4k)
+	uint32_t DPUBootStatus;
+	uint32_t SetMultiCoreBootStatus;
+	uint32_t MultiCoreBootStatus;
+	uint32_t writeStatus;
+	uint32_t readStatus;
+	uint32_t getPicNumers;
+	uint32_t failPicNumers;
+	uint32_t dpmOverStatus;
+	uint32_t dpmStartStatus;
+	uint32_t dpmAllOverStatus;
+	uint32_t pushCodeStatus;
+	uint32_t reserved0[0x1000 / 4 - 11];
+
+	// control registers. (4k)
+	uint32_t DPUBootControl;
+	uint32_t writeControl;
+	uint32_t readControl;
+	uint32_t PC_urlNumsReg;
+	uint32_t modelType; //1:motor 2:car 3:person
+	uint32_t dpmOverControl;
+	uint32_t dpmStartControl;
+	uint32_t pushCodeControl;
+	uint32_t reserved1[0x1000 / 4 - 8];
 } LinkLayerRegisterTable;
 
 typedef struct _tagLinkLayerHandler

@@ -12,6 +12,7 @@
 #define DSP_INIT_READY 			(0x00000001U)
 #define DSP_INIT_MASK 			(0x00000001U)
 
+#define DSP_GETCODE_RESET		(0x00000001U)
 #define DSP_GETCODE_FINISH 		(0x00000010U)
 #define DSP_GETCODE_FAIL		(0x00000000U)
 
@@ -28,7 +29,8 @@
 #define DSP_TEST_SET           (0x00100000U)
 
 // the PC_PushCodeStatus Register value range.
-#define PC_PUSHCODE_FINISH      (0x00000001U)
+#define PC_PUSHCODE_RESET		(0x00000001U)
+#define PC_PUSHCODE_FINISH      (0x00000010U)
 #define PC_PUSHCODE_FAIL		(0x00000000U)
 
 // Register Length
