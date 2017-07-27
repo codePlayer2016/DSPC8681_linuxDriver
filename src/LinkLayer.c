@@ -161,6 +161,7 @@ void LinkLayer_Close(LinkLayerHandler **ppHandle)
 		}
 	}
 }
+
 int LinkLayer_WaitBufferReady(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioType, uint32_t pendtime)
 {
 	int retValue = 1;
@@ -168,18 +169,39 @@ int LinkLayer_WaitBufferReady(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioTyp
 	uint32_t *pBufferStatus = NULL;
 	uint32_t readyValue = 0;
 
+	/**********************PC Write***************************/
+	// PC polling for new write.
+	if (ioType == LINKLAYER_IO_WRITE_QRESET)
+	{
+		pBufferStatus = (uint32_t *) &(pHandle->pRegisterTable->writeStatus);
+		readyValue = DSP_RD_RESET;
+	}
+	// PC polling for dsp read finished.
+	if (ioType == LINKLAYER_IO_WRITE_QFIN)
+	{
+		pBufferStatus = (uint32_t *) &(pHandle->pRegisterTable->writeStatus);
+		readyValue = DSP_RD_FINISH;
+	}
+	/**********************PC read***************************/
+	// pc polling for new read start.
+	if (ioType == LINKLAYER_IO_READ_QRESET)
+	{
+		pBufferStatus = (uint32_t *) &(pHandle->pRegisterTable->readStatus);
+		readyValue = DSP_WT_RESET;
+	}
+	// PC polling for read.  wait the DSP to wirte finshed.
+	if (ioType == LINKLAYER_IO_READ_QFIN)
+	{
+		pBufferStatus = (uint32_t *) &(pHandle->pRegisterTable->readStatus);
+		readyValue = DSP_WT_FINISH;
+	}
+#if 0
 	// PC polling for read.  wait the DSP to wirte finshed.
 	if (ioType == LINKLAYER_IO_READ)
 	{
 		// wait dsp write over.PC can read.
 		pBufferStatus = (uint32_t *) &(pHandle->pRegisterTable->readStatus);
 		readyValue = PC_WAIT_RD;
-	}
-	if (ioType == LINKLAYER_IO_WRITE)
-	{
-		// PC wait dsp read zone empty.so PC can write.
-		pBufferStatus = (uint32_t *) &(pHandle->pRegisterTable->writeStatus);
-		readyValue = PC_WAIT_WT;
 	}
 	if (ioType == LINKLAYER_IO_START)
 	{
@@ -193,48 +215,49 @@ int LinkLayer_WaitBufferReady(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioTyp
 		pBufferStatus = (uint32_t *) &(pHandle->pRegisterTable->dpmOverStatus);
 		readyValue = PC_DPM_OVERSTATUS;
 	}
+#endif
 	retValue = pollValue(pBufferStatus, readyValue, pendtime);
 	if (retValue == 0)
 	{
-		if (ioType == LINKLAYER_IO_READ)
+		if (ioType == LINKLAYER_IO_WRITE_QRESET)
 		{
-			debug_printf("read buffer ready\n");
+			debug_printf("pc can write to dsp\n");
 		}
-		if (ioType == LINKLAYER_IO_WRITE)
+		if (ioType == LINKLAYER_IO_WRITE_QFIN)
 		{
-			debug_printf("write buffer ready\n");
+			debug_printf("pc write and dsp read finished\n");
 		}
-		if (ioType == LINKLAYER_IO_START)
+		if (ioType == LINKLAYER_IO_READ_QRESET)
 		{
-			debug_printf("DPM start ready\n");
+			debug_printf("pc can't read before dsp write\n");
 		}
-		if (ioType == LINKLAYER_IO_OVER)
+		if (ioType == LINKLAYER_IO_READ_QFIN)
 		{
-			debug_printf("dpm over\n");
+			debug_printf("pc can read\n");
 		}
 	}
 	else
 	{
-		if (ioType == LINKLAYER_IO_READ)
+		if (ioType == LINKLAYER_IO_WRITE_QRESET)
 		{
-			debug_printf("read buffer ready timeout\n");
+			debug_printf("timeout:pc can write to dsp\n");
 		}
-		if (ioType == LINKLAYER_IO_WRITE)
+		if (ioType == LINKLAYER_IO_WRITE_QFIN)
 		{
-			debug_printf("write buffer ready timeout\n");
+			debug_printf("timeout:pc write and dsp read finished\n");
 		}
-		if (ioType == LINKLAYER_IO_START)
+		if (ioType == LINKLAYER_IO_READ_QRESET)
 		{
-			debug_printf("DPM start ready timeout\n");
+			debug_printf("timeout:pc can't read before dsp write\n");
 		}
-		if (ioType == LINKLAYER_IO_OVER)
+		if (ioType == LINKLAYER_IO_READ_QFIN)
 		{
-			debug_printf("dpm over timeout\n");
+			debug_printf("timeout:pc can read\n");
 		}
 	}
 	return (retValue);
 }
-
+#if 0
 int LinkLayer_Confirm(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioType)
 {
 	int retValue = 0;
@@ -250,37 +273,44 @@ int LinkLayer_Confirm(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioType)
 
 	return (retValue);
 }
-
+#endif
 int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioType)
 {
 	int retValue = 0;
 
 	// TODO: change to switch-case style.
 	debug_printf("ioType=%d\n", ioType);
-	if (ioType == LINKLAYER_IO_READ)
+
+	/************************pc write************************/
+	if (ioType == LINKLAYER_IO_WRITE_RESET)
 	{
-		pHandle->pRegisterTable->readControl = PC_RD_ENABLE;
+		// PC writeBuffer reset.DSP can't read.
+		pHandle->pRegisterTable->writeControl = PC_WT_RESET;
+
 	}
-	if (ioType == LINKLAYER_IO_WRITE)
+	if (ioType == LINKLAYER_IO_WRITE_FIN)
+	{
+		// PC writeBuffer reset.DSP can't read.
+		pHandle->pRegisterTable->writeControl = PC_WT_FINISH;
+
+	}
+	/************************pc read************************/
+	if (ioType == LINKLAYER_IO_READ_RESET)
+	{
+		pHandle->pRegisterTable->readControl = PC_RD_RESET;
+	}
+	if (ioType == LINKLAYER_IO_READ_FIN)
 	{
 		// PC set the register so dsp can read.
-		pHandle->pRegisterTable->writeControl = PC_WT_OVER;
-		debug_printf("change the writestatus in the dsp,writeNumer=%x\n", (pHandle->pRegisterTable->writeControl));
-		//5.13
-		pHandle->pRegisterTable->dpmStartControl = 0x00000000;
+		pHandle->pRegisterTable->readControl = PC_RD_FINISH;
 	}
+#if 0
 	if (ioType == LINKLAYER_IO_READ_FIN)
 	{
 		// PC read the DSP process result. and dsp need to polling.
 		pHandle->pRegisterTable->readControl = PC_RD_OVER;
 	}
-	if (ioType == LINKLAYER_IO_WRITE_FIN)
-	{
-		// PC set the register so dsp can't read.polling
-		// TODO: change the PC_WT_READY to a meaning name.
-		pHandle->pRegisterTable->writeControl = PC_WT_READY;
 
-	}
 	if (ioType == LINKLAYER_IO_START)
 	{
 		// PC read the DSP process result. and dsp need to polling.
@@ -295,10 +325,11 @@ int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE io
 		//2016.5.20
 		pHandle->pRegisterTable->dpmStartControl = 0x00000000;
 	}
-
+#endif
 	return (retValue);
 }
 
+#if 0
 int LinkLayer_CheckStatus(LinkLayerRegisterTable *gpRegisterTable, int chipIndex)
 {
 	int retValue = 0;
@@ -340,6 +371,8 @@ int LinkLayer_CheckStatus(LinkLayerRegisterTable *gpRegisterTable, int chipIndex
 
 	return retValue;
 }
+#endif
+#if 0
 int LinkLayer_CheckDpmStatus(LinkLayerHandler *pHandle)
 {
 	if ((pHandle->pRegisterTable->dpmAllOverStatus) & PC_DPM_ALLOVER)
@@ -352,4 +385,4 @@ int LinkLayer_CheckDpmStatus(LinkLayerHandler *pHandle)
 		return -1;
 	}
 }
-
+#endif

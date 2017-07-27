@@ -5,33 +5,24 @@
 #include <linux/semaphore.h>
 #include "pcie.h"
 
-// PC-side write(DSP-side read) buffer status.
-#define PC_WT_READY		(0x000055aaU)
-#define PC_WAIT_WT		(0x000055aaU)
+/********************PC write to DSP.*/
+// DSP-side read buffer status.(pc polling)
+#define DSP_RD_RESET	(0x000055aaU)
+#define DSP_RD_FINISH 	(0x550000aaU)
+// PC-side write buffer status.(pc set)
+#define PC_WT_RESET 	(0x0000aa55U)
+#define PC_WT_FINISH 	(0xaa000055U)
+/*************************************/
 
-#define PC_WT_OVER		(0x55aa0000U)
-#define PC_WT_BUSY		(0x55555555U)
-// DSP-side read buffer status.
-#define DSP_RD_INIT		(0x000055aaU)
-#define DSP_RD_READY 	(0x55aa0000U)
-#define DSP_RD_OVER 	(0x000055aaU)
-#define DSP_RD_BUSY		(0x55555555U)
+/********************DSP write to PC.*/
+// PC-side read buffer status.(pc set)
+#define PC_RD_RESET		(0x000077bbU)
+#define PC_RD_FINISH	(0x770000bbU)
+// DSP-side write buffer status.(pc polling)
+#define DSP_WT_RESET	(0x0000bb77U)
+#define DSP_WT_FINISH	(0xbb000077U)
+/*************************************/
 
-// PC-side read(DSP-side write) buffer status.
-#define PC_RD_INIT		(0xaa000055U)
-
-#define PC_RD_READY		(0x550000aaU)
-#define PC_RD_ENABLE		(0x550000aaU)
-
-#define PC_WAIT_RD		(0x550000aaU)
-
-#define PC_RD_OVER		(0xaa000055U)
-#define PC_RD_BUSY		(0x55555555U)
-
-// DSP-side write buffer status.
-#define DSP_WT_READY 	(0xaa000055U)
-#define DSP_WT_OVER 	(0x550000aaU)
-#define DSP_WT_BUSY		(0x55555555U)
 //dpm start and over flag
 #define PC_DPM_STARTSTATUS   (0x0505aa00U)
 #define PC_DPM_STARTCLR   (0x0a0a5500U)
@@ -43,12 +34,15 @@
 
 typedef enum __tagLINKLAYER_IO_TYPE
 {
-	LINKLAYER_IO_READ = 0,
-	LINKLAYER_IO_WRITE = 1,
-	LINKLAYER_IO_READ_FIN = 2,
+	LINKLAYER_IO_RESERVER = 0,
+	LINKLAYER_IO_WRITE_RESET = 1,
+	LINKLAYER_IO_WRITE_QRESET = 2,
 	LINKLAYER_IO_WRITE_FIN = 3,
-	LINKLAYER_IO_START = 4,
-	LINKLAYER_IO_OVER = 5
+	LINKLAYER_IO_WRITE_QFIN = 4,
+	LINKLAYER_IO_READ_RESET = 5,
+	LINKLAYER_IO_READ_QRESET = 6,
+	LINKLAYER_IO_READ_FIN = 7,
+	LINKLAYER_IO_READ_QFIN = 8,
 } LINKLAYER_IO_TYPE;
 // TODO: merge the structure in LinkLayer.h and common.h
 #if 0

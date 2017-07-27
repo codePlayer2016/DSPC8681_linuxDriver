@@ -11,12 +11,12 @@
 //#include <stdint.h>
 #include <linux/pci.h>
 
-#if __WORDSIZE == 64
+#if __x86_64__
 # ifndef __intptr_t_defined
 typedef long int intptr_t;
 #  define __intptr_t_defined
 # endif
-#else
+#elif __i386__
 # ifndef __intptr_t_defined
 typedef int intptr_t;
 #  define __intptr_t_defined

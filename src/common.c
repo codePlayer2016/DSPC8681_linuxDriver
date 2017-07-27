@@ -28,8 +28,7 @@ int pollValue(uint32_t *pAddress, uint32_t pollVal, uint32_t maxPollCount)
 	uint32_t stopPoll = 0;
 	uint32_t realTimeVal = 0;
 
-	for (loopCount = 0; (loopCount < maxPollCount) && (stopPoll == 0);
-			loopCount++)
+	for (loopCount = 0; (loopCount < maxPollCount) && (stopPoll == 0); loopCount++)
 	{
 		printk("");
 		realTimeVal = (*pAddress);
@@ -60,13 +59,12 @@ int pollCompareValue(uint32_t *pAddress, uint32_t *qAddress, uint32_t maxPollCou
 	uint32_t realTimeVal = 0;
 	uint32_t setTimeVal = 0;
 
-	for (loopCount = 0; (loopCount < maxPollCount) && (stopPoll == 0);
-			loopCount++)
+	for (loopCount = 0; (loopCount < maxPollCount) && (stopPoll == 0); loopCount++)
 	{
 		printk("");
 		setTimeVal = (*pAddress);
 		realTimeVal = (*qAddress);
-		if ((realTimeVal & setTimeVal == 0xff))
+		if ((realTimeVal & setTimeVal) == 0xff)
 		{
 			stopPoll = 1;
 		}

@@ -141,6 +141,7 @@ int init_module(void)
 
 	int retValue = 0;
 	int pciDevCount = 0;
+	int chipIndex = 0;
 	//uint32_t dummy = 0;
 
 	retValue = PCI_FindPciDevices(g_pPcieDev, &pciDevCount);
@@ -150,7 +151,6 @@ int init_module(void)
 		return (retValue);
 	}
 
-	int chipIndex = 0;
 	for (chipIndex = 0; chipIndex < pciDevCount; chipIndex++)
 	{
 		g_pPcieBarReg[chipIndex] = (pcieBarReg_t *) kzalloc(sizeof(pcieBarReg_t), GFP_KERNEL);
@@ -321,7 +321,7 @@ void cleanup_module()
 
 		free_irq(irqNo, &dummy);
 	}
-	printk("pcie remove successful\n");
+	debug_printf("pcie remove successful\n");
 #endif
 }
 
@@ -341,20 +341,21 @@ int DPU_probe(struct pci_dev *pci_dev, const struct pci_device_id *pci_id)
 int DPU_open(struct inode *node, struct file *filp)
 {
 	int retVal = 0;
+	int retLinkValue = 0;
+	ProcessorUnitDev_t *pProcessorUnitDev = NULL;
+	LinkLayerHandler *pHandle = NULL;
 
 	int chipIndex = MINOR(node->i_rdev);
 
 	debug_printf("devMajor=%x,fileName=%s,chipIndex=%d\n", MAJOR(node->i_rdev), filp->f_path.dentry->d_name.name, chipIndex);
 
 	//ProcessorUnitDev_t *pProcessorUnitDev = container_of(node->i_cdev, ProcessorUnitDev_t, charDev);
-	ProcessorUnitDev_t *pProcessorUnitDev = g_pProcessorUnitDev[chipIndex];
+	pProcessorUnitDev = g_pProcessorUnitDev[chipIndex];
 
 	debug_printf("pProcessorUnitDev=%p\n", pProcessorUnitDev);
 
-	int retLinkValue = 0;
-
 	//retLinkValue = LinkLayer_Open(&pHandle, g_pPcieDev, g_pPcieBarReg, NULL);
-	LinkLayerHandler *pHandle = (LinkLayerHandler *) kmalloc(sizeof(LinkLayerHandler), GFP_KERNEL);
+	pHandle = (LinkLayerHandler *) kmalloc(sizeof(LinkLayerHandler), GFP_KERNEL);
 	if (NULL == pHandle)
 	{
 		retVal = -1;
@@ -456,13 +457,14 @@ int DPU_mmap(struct file *filp, struct vm_area_struct *vma)
 	int stateCode = 0;
 	uint32_t phyAddrFrameNO;
 	uint32_t rangeLength_vma;
+	intptr_t *pAlignDMAVirtAddr = NULL;
 
 	int chipIndex = 0;
 	char devNameStr[] = "chipUnit%d";
 	sscanf(filp->f_path.dentry->d_name.name, devNameStr, &chipIndex);
 	debug_printf("chipIndex=%u\n", chipIndex);
 
-	intptr_t *pAlignDMAVirtAddr = ((intptr_t *) (((LinkLayerHandler *) (filp->private_data))->pRegisterTable));
+	pAlignDMAVirtAddr = ((intptr_t *) (((LinkLayerHandler *) (filp->private_data))->pRegisterTable));
 	debug_printf("registable=%p\n", pAlignDMAVirtAddr);
 
 	phyAddrFrameNO = virt_to_phys(pAlignDMAVirtAddr);
@@ -496,23 +498,27 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 #if 1
 	long retValue = 0;
 	uint8_t chipIndex = 0;
+	int32_t stateCode = 0;
+	int *flag = NULL;
+	LinkLayerHandler *pLinkLayer = NULL;
+	DPUDriver_WaitBufferReadyParam *pParam = NULL;
+	uint32_t *pDspMappedRegVirt = NULL;
 	char devNameStr[] = "chipUnit%d";
 	sscanf(filp->f_path.dentry->d_name.name, devNameStr, &chipIndex);
 	debug_printf("chipIndex=%u\n", chipIndex);
 
-	LinkLayerHandler *pLinkLayer = (LinkLayerHandler *) (filp->private_data);
-
-	int32_t stateCode = 0;
+	pLinkLayer = (LinkLayerHandler *) (filp->private_data);
 
 	switch (cmd)
 	{
+#if 0
 	case DPU_IO_CMD_CONFIRM:
 	{
 		stateCode = LinkLayer_Confirm(pLinkLayer, (LINKLAYER_IO_TYPE) arg);
 
 		if (stateCode != 0)
 		{
-			printk("LinkLayer_Confirm failed: %x\n", stateCode);
+			debug_printf("LinkLayer_Confirm failed: %x\n", stateCode);
 		}
 		else
 		{
@@ -520,10 +526,10 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		break;
 	}
-
+#endif
 	case DPU_IO_CMD_WAITBUFFERREADY:
 	{
-		DPUDriver_WaitBufferReadyParam *pParam = (DPUDriver_WaitBufferReadyParam *) arg;
+		pParam = (DPUDriver_WaitBufferReadyParam *) arg;
 		stateCode = LinkLayer_WaitBufferReady(pLinkLayer, pParam->waitType, pParam->pendTime);
 		if (stateCode != 0)
 		{
@@ -539,13 +545,13 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	case DPU_IO_CMD_CHANGEBUFFERSTATUS:
 	{
-		int *flag = (int *) arg;
+		flag = (int *) arg;
 		debug_printf("DPU_IO_CMD_CHANGEBUFFERSTATUS:the *flag=%d\n", *flag);
 		stateCode = LinkLayer_ChangeBufferStatus(pLinkLayer, *flag);
 
 		if (stateCode != 0)
 		{
-			printk("LinkLayer_Confirm failed: %x\n", stateCode);
+			debug_printf("LinkLayer_Confirm failed: %x\n", stateCode);
 		}
 		else
 		{
@@ -556,24 +562,24 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		// trigger the interrupt to DSP,make the DSP to start DPM process the picture.
 	case DPU_IO_CMD_INTERRUPT:
 	{
-		printk("trigger a interrupt to DSP\n");
+		debug_printf("trigger a interrupt to DSP\n");
 		//uint32_t *pDspMappedRegVirt = g_pPcieBarReg->regVirt;
-		uint32_t *pDspMappedRegVirt = g_pPcieBarReg[chipIndex]->regVirt;
+		pDspMappedRegVirt = g_pPcieBarReg[chipIndex]->regVirt;
 		iowrite32(1, pDspMappedRegVirt + LEGACY_A_IRQ_STATUS_RAW / 4);
 		break;
 	}
 //////////////////////////////////////////////////////////////////////////
 	case DPU_IO_CMD_WAITDPM:
 	{
-		printk("wait the DSP trigger the host\n");
+		debug_printf("wait the DSP trigger the host\n");
 		down(&gDspDpmOverSemaphore[chipIndex]);
 		break;
 
 	}
 	case DPU_IO_CMD_WAITDPMSTART:
 	{
-		printk("wait the DSP dsp start\n");
-		DPUDriver_WaitBufferReadyParam *pParam = (DPUDriver_WaitBufferReadyParam *) arg;
+		debug_printf("wait the DSP dsp start\n");
+		pParam = (DPUDriver_WaitBufferReadyParam *) arg;
 		stateCode = LinkLayer_WaitBufferReady(pLinkLayer, pParam->waitType, pParam->pendTime);
 		if (stateCode != 0)
 		{
@@ -600,38 +606,38 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	}
 	case DPU_IO_CMD_CHANGEREG:
 	{
-		int *flag = (int *) arg;
+		flag = (int *) arg;
 		debug_printf("DPU_IO_CMD_CHANGEREG:the *flag=%d\n", *flag);
 		stateCode = LinkLayer_ChangeBufferStatus(pLinkLayer, *flag);
 
 		if (stateCode != 0)
 		{
-			printk("LinkLayer_ChangeBufferStatus failed: %x\n", stateCode);
+			debug_printf("LinkLayer_ChangeBufferStatus failed: %x\n", stateCode);
 		}
 		else
 		{
-			printk("LinkLayer_ChangeBufferStatus success\n");
+			debug_printf("LinkLayer_ChangeBufferStatus success\n");
 		}
 		break;
 	}
 	case DPU_IO_CMD_CHANGOVERREG:
 	{
-		int *flag = (int *) arg;
+		flag = (int *) arg;
 		debug_printf("DPU_IO_CMD_CHANGOVERREG:the *flag=%d\n", *flag);
 		stateCode = LinkLayer_ChangeBufferStatus(pLinkLayer, *flag);
 		if (stateCode != 0)
 		{
-			printk("LinkLayer_ChangeBufferStatus failed: %x\n", stateCode);
+			debug_printf("LinkLayer_ChangeBufferStatus failed: %x\n", stateCode);
 		}
 		else
 		{
-			printk("LinkLayer_ChangeBufferStatus success\n");
+			debug_printf("LinkLayer_ChangeBufferStatus success\n");
 		}
 		break;
 	}
 	case DPU_IO_CMD_CHECKDPMALLOVER:
 	{
-		DPUDriver_WaitBufferReadyParam *pParam = (DPUDriver_WaitBufferReadyParam *) arg;
+		pParam = (DPUDriver_WaitBufferReadyParam *) arg;
 		stateCode = LinkLayer_CheckDpmStatus(pLinkLayer);
 		if (stateCode != 0)
 		{
@@ -648,7 +654,7 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	default:
 	{
 		retValue = 0;
-		printk("other operation cmd is %d\n", cmd);
+		debug_printf("other operation cmd is %d\n", cmd);
 
 		break;
 	}
@@ -678,7 +684,7 @@ static irqreturn_t ISR_handler(int irq, void *arg)
 	status = HAL_CheckPciInterrupt(g_pPcieBarReg[chipIndex]);
 	if (status == 1)
 	{
-		printk("cyx receive interrupt from dsp\n");
+		debug_printf("cyx receive interrupt from dsp\n");
 	}
 //cheak zone status
 	retValue = LinkLayer_CheckStatus(gpRegisterTable[chipIndex], chipIndex);

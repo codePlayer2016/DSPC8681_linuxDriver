@@ -299,7 +299,8 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int processor
 
 	uint8_t *DMAVirAddr = NULL;
 	dma_addr_t DMAPhyAddr = 0;
-
+	int coreIndex = 0;
+	uint32_t DPUCoreLength=0;
 // alloc DMA zone.
 	DMAVirAddr = (uint8_t*) dma_alloc_coherent(&pPciDev->dev, DMA_TRANSFER_SIZE, &DMAPhyAddr, GFP_KERNEL);
 
@@ -333,22 +334,7 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int processor
 
 	// pushs DSPInit code. devide into 4U
 	retValue = uploadProgram(pPcieBarReg, _thirdBLCode_U0, 0);
-//	switch (processorIndex)
-//	{
-//	case 0:
-//		retValue = uploadProgram(pPcieBarReg, _thirdBLCode_U0, 0);
-//		break;
-//	case 1:
-//		retValue = uploadProgram(pPcieBarReg, _thirdBLCode_U1, 0);
-//		break;
-//	case 2:
-//		retValue = uploadProgram(pPcieBarReg, _thirdBLCode_U2, 0);
-//		break;
-//	case 3:
-//		retValue = uploadProgram(pPcieBarReg, _thirdBLCode_U3, 0);
-//		break;
-//	}
-	//retValue = uploadProgram(pPcieBarReg, _thirdBLCode_U0, 0);
+
 	debug_printf("retValue of uploadProgram is %d\n", retValue);
 // waits DSPInitReady.
 	if (retValue == 0)
@@ -363,24 +349,8 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int processor
 	}
 	debug_printf("after pollValue uploadProgram\n");
 
-//	int writeTOdsp()
-//	{
-//		//updateWriteBuffer(resetBeforeWrite);
-//		//writeOutBuffer();
-//		//updateWriteBuffer(writeFinished);
-//
-//		//waitDSPread();
-//	}
-//	int readFromPC()
-//	{
-//		//waitPCwrite();
-//		//updateReadBuffer(resetBeforeRead);
-//		//readInBuffer();
-//		//updateReadBuffer(readFinished);
-//		//waitWriteBufferReset();
-//	}
-	int coreIndex = 0;
-	uint32_t DPUCoreLength = ((sizeof(_app4Core0) + 3) / 4) * 4;
+	coreIndex = 0;
+	DPUCoreLength = ((sizeof(_app4Core0) + 3) / 4) * 4;
 	debug_printf("the CodeLength = %x \n", DPUCoreLength);
 	//* 1.updateWriteBuffer(resetBeforeWrite);
 	(pRegisterTable->pushCodeControl) = PC_PUSHCODE_RESET;
@@ -456,67 +426,6 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int processor
 	}
 	(pRegisterTable->pushCodeControl) = PC_PUSHCODE_RESET;
 
-#if 0	// for one core
-	if (retPollVal == 0)
-	{
-		uint32_t DPUCoreLength = ((sizeof(_DPUCore) + 3) / 4) * 4;
-
-		debug_printf("the CodeLength = %x \n", DPUCoreLength);
-
-		memcpy(pPutDSPImgZone, _DPUCore, DPUCoreLength);
-
-		(pRegisterTable->DPUBootControl) = PC_PUSHCODE_FINISH;
-	}
-	else
-	{
-	}
-
-//wait dsp get the code.
-	if (retPollVal == 0)
-	{
-		retPollVal = pollValue(&(pRegisterTable->DPUBootStatus),
-				DSP_GETCODE_FINISH, 0xffffffff);
-		if (retPollVal == 0)
-		{
-			debug_printf("DSP get DSPImg successful \n");
-		}
-		else
-		{
-			retValue = -2;
-			debug_printf("DPUBootStatus=%x\n", (pRegisterTable->DPUBootStatus));
-			return (retValue);
-		}
-	}
-	else
-	{
-
-	}
-#endif
-
-#if 0
-// wait the dsp crc check result.
-	if (retPollVal == 0)
-	{
-		retPollVal = pollValue(&(pRegisterTable->DPUBootStatus),
-				DSP_CRCCHECK_SUCCESSFUL, 0xffffffff);
-		if (retPollVal == 0)
-		{
-			debug_printf("DSP check crc successful \n");
-		}
-		else
-		{
-			retValue = -3;
-			debug_printf("DSP check crc failed \n");
-			debug_printf("failed DPUBootStatus=%x\n",
-					(pRegisterTable->DPUBootStatus));
-			return (retValue);
-		}
-	}
-	else
-	{
-	}
-#endif
-
 	//compare SetMultiCoreBootStatus to MulticoreCoreBootStatus to know if the core allBoot or not.
 	if (retPollVal == 0)
 	{
@@ -535,28 +444,7 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int processor
 	else
 	{
 	}
-// wait the dsp jump to the dpm code.
-	// delet the DSP_GETENTRY_FINISH state in the dsp,so the coming code is invalid.
-#if 0
-	if (retPollVal == 0)
-	{
-		retPollVal = pollValue(&(pRegisterTable->DPUBootStatus),
-				DSP_GETENTRY_FINISH, 0xffffffff);
-		if (retPollVal == 0)
-		{
-			debug_printf("DSP jump to the dpm code successful \n");
-		}
-		else
-		{
-			retValue = -4;
-			debug_printf("DPUBootStatus=%x\n", (pRegisterTable->DPUBootStatus));
-			return (retValue);
-		}
-	}
-	else
-	{
-	}
-#endif
+
 	debug_printf("LINKLAYER_Open end,DPUBootStatus=%x\n", pRegisterTable->DPUBootStatus);
 
 	return (retValue);
