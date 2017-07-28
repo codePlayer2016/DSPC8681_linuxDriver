@@ -87,7 +87,7 @@ typedef struct _tagLinkLayerRegisterTable
 	uint32_t dpmStartStatus;
 	uint32_t dpmAllOverStatus;
 	uint32_t pushCodeStatus;
-	uint32_t reserved0[0x1000 / 4 - 11];
+	uint32_t reserved0[0x1000/4 - 11];
 
 	// control registers. (4k)
 	uint32_t DPUBootControl;
@@ -98,7 +98,7 @@ typedef struct _tagLinkLayerRegisterTable
 	uint32_t dpmOverControl;
 	uint32_t dpmStartControl;
 	uint32_t pushCodeControl;
-	uint32_t reserved1[0x1000 / 4 - 8];
+	uint32_t reserved1[0x1000/4 - 8];
 } LinkLayerRegisterTable;
 
 typedef struct _tagLinkLayerHandler
@@ -119,13 +119,13 @@ int LinkLayer_Open(LinkLayerHandler *pLinkLayerHandle, ProcessorUnitDev_t *pProc
 void LinkLayer_Close(LinkLayerHandler **ppHandle);
 int LinkLayer_WaitBufferReady(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioType, uint32_t pendtime);
 
-int LinkLayer_Confirm(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioType);
+//int LinkLayer_Confirm(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioType);
 
 int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioType);
-int LinkLayer_CheckStatus(LinkLayerRegisterTable *gpRegisterTable, int chipIndex);
-int LinkLayer_ChangeDpmReg(LinkLayerHandler *pHandle);
+//int LinkLayer_CheckStatus(LinkLayerRegisterTable *gpRegisterTable, int chipIndex);
+//int LinkLayer_ChangeDpmReg(LinkLayerHandler *pHandle);
 int LinkLayer_ClearInterrupt(LinkLayerHandler *pHandle);
 int LinkLayer_WaitDpmOver(LinkLayerHandler *pHandle, uint32_t pendtime);
-int LinkLayer_CheckDpmStatus(LinkLayerHandler *pHandle);
+//int LinkLayer_CheckDpmStatus(LinkLayerHandler *pHandle);
 
 #endif // _INC_LINKLAYER_H_
