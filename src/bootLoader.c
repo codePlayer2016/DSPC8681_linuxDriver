@@ -318,7 +318,7 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int processor
 	gpRegisterTable[processorIndex] = pRegisterTable;
 //pRegisterTable->registerPhyAddrInPc = alignPhyAddr;
 
-	set_memory_ro(addrMap2DSPPCIE, 1);
+	//set_memory_ro(addrMap2DSPPCIE, 1);
 
 	pPutDSPImgZone = (uint32_t *) (addrMap2DSPPCIE + registerLength);
 

@@ -170,7 +170,8 @@ int init_module(void)
 
 	pcieDevNum.major = MAJOR(pcieDevNum.devnum);
 
-	for (chipIndex = pcieDevNum.minor_first; chipIndex < pcieDevNum.count; chipIndex++)
+	//for (chipIndex = pcieDevNum.minor_first; chipIndex < pcieDevNum.count; chipIndex++)
+	for (chipIndex = pcieDevNum.minor_first; chipIndex < 1; chipIndex++)
 	{
 		pPcieCdev[chipIndex] = cdev_alloc();
 		//pPcieCdev[chipIndex] = &(g_pProcessorUnitDev[chipIndex]->charDev);
@@ -352,7 +353,7 @@ int DPU_open(struct inode *node, struct file *filp)
 	//ProcessorUnitDev_t *pProcessorUnitDev = container_of(node->i_cdev, ProcessorUnitDev_t, charDev);
 	pProcessorUnitDev = g_pProcessorUnitDev[chipIndex];
 
-	debug_printf("pProcessorUnitDev=%p\n", pProcessorUnitDev);
+	//debug_printf("pProcessorUnitDev=%p\n", pProcessorUnitDev);
 
 	//retLinkValue = LinkLayer_Open(&pHandle, g_pPcieDev, g_pPcieBarReg, NULL);
 	pHandle = (LinkLayerHandler *) kmalloc(sizeof(LinkLayerHandler), GFP_KERNEL);
@@ -480,7 +481,7 @@ int DPU_mmap(struct file *filp, struct vm_area_struct *vma)
 	stateCode = remap_pfn_range(vma, vma->vm_start, phyAddrFrameNO, rangeLength_vma, PAGE_SHARED);
 	if (stateCode < 0)
 	{
-		debug_printf("lhs remap register page  error\n");
+		debug_printf("mmap  error\n");
 	}
 	else
 	{
@@ -635,22 +636,24 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		}
 		break;
 	}
-	case DPU_IO_CMD_CHECKDPMALLOVER:
-	{
-		pParam = (DPUDriver_WaitBufferReadyParam *) arg;
-		stateCode = LinkLayer_CheckDpmStatus(pLinkLayer);
-		if (stateCode != 0)
+#if 0
+		case DPU_IO_CMD_CHECKDPMALLOVER:
 		{
-			debug_printf("LinkLayer_CheckDpmStatus timeout: %x\n", stateCode);
-		}
-		else
-		{
-			debug_printf("LinkLayer_CheckDpmStatus finished: %x\n", stateCode);
-		}
-		copy_to_user((pParam->pBufStatus), &stateCode, sizeof(int));
-		break;
+			pParam = (DPUDriver_WaitBufferReadyParam *) arg;
+			stateCode = LinkLayer_CheckDpmStatus(pLinkLayer);
+			if (stateCode != 0)
+			{
+				debug_printf("LinkLayer_CheckDpmStatus timeout: %x\n", stateCode);
+			}
+			else
+			{
+				debug_printf("LinkLayer_CheckDpmStatus finished: %x\n", stateCode);
+			}
+			copy_to_user((pParam->pBufStatus), &stateCode, sizeof(int));
+			break;
 
-	}
+		}
+#endif
 	default:
 	{
 		retValue = 0;
@@ -687,6 +690,7 @@ static irqreturn_t ISR_handler(int irq, void *arg)
 		debug_printf("cyx receive interrupt from dsp\n");
 	}
 //cheak zone status
+#if 0
 	retValue = LinkLayer_CheckStatus(gpRegisterTable[chipIndex], chipIndex);
 	if (retValue == 0)
 	{
@@ -696,6 +700,6 @@ static irqreturn_t ISR_handler(int irq, void *arg)
 	{
 		debug_printf("LinkLayer_CheckStatus error\n");
 	}
-
+#endif
 	PCI_ClearDspInterrupt(g_pPcieBarReg[chipIndex]);
 }

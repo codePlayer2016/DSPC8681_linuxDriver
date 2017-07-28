@@ -168,7 +168,7 @@ int LinkLayer_WaitBufferReady(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioTyp
 	int pollCount = 0;
 	uint32_t *pBufferStatus = NULL;
 	uint32_t readyValue = 0;
-
+	debug_printf("ioType=%d\n", ioType);
 	/**********************PC Write***************************/
 	// PC polling for new write.
 	if (ioType == LINKLAYER_IO_WRITE_QRESET)
@@ -292,6 +292,17 @@ int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE io
 	{
 		// PC writeBuffer reset.DSP can't read.
 		pHandle->pRegisterTable->writeControl = PC_WT_FINISH;
+#if 1
+		debug_printf("urlItemNum=%d\n", pHandle->pRegisterTable->PC_urlNumsReg);
+		char *purl = ((uint8_t *) (pHandle->pRegisterTable) + 2 * 1024 * 4);
+		int urlIndex = 0;
+		for (urlIndex = 0; urlIndex < 8; urlIndex++)
+		{
+			debug_printf("url:%s\n", purl);
+			purl += 100;
+		}
+		//debug_printf("urs=%s\n",pHandle->pRegisterTable->PC_urlNumsReg);
+#endif
 
 	}
 	/************************pc read************************/
