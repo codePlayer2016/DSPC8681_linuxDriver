@@ -75,5 +75,6 @@ typedef struct _tagProcessorUnitDev
 uint32_t byteTo32bits(uint8_t *pDspCode);
 
 int pollValue(uint32_t *pAddress, uint32_t pollVal, uint32_t maxPollCount);
+int pollEqualValue(uint32_t *pAddress, uint32_t pollVal, uint32_t maxPollCount);
 int pollCompareValue(uint32_t *pAddress, uint32_t *qAddress, uint32_t maxPollCount);
 #endif /* INC_COMMON_H_ */

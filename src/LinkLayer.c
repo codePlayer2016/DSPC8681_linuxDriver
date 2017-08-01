@@ -216,7 +216,8 @@ int LinkLayer_WaitBufferReady(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE ioTyp
 		readyValue = PC_DPM_OVERSTATUS;
 	}
 #endif
-	retValue = pollValue(pBufferStatus, readyValue, pendtime);
+	//retValue = pollValue(pBufferStatus, readyValue, pendtime);
+	retValue = pollEqualValue(pBufferStatus, readyValue, pendtime);
 	if (retValue == 0)
 	{
 		if (ioType == LINKLAYER_IO_WRITE_QRESET)
@@ -294,13 +295,6 @@ int LinkLayer_ChangeBufferStatus(LinkLayerHandler *pHandle, LINKLAYER_IO_TYPE io
 		pHandle->pRegisterTable->writeControl = PC_WT_FINISH;
 #if 1
 		debug_printf("urlItemNum=%d\n", pHandle->pRegisterTable->PC_urlNumsReg);
-		char *purl = ((uint8_t *) (pHandle->pRegisterTable) + 2 * 1024 * 4);
-		int urlIndex = 0;
-		for (urlIndex = 0; urlIndex < 8; urlIndex++)
-		{
-			debug_printf("url:%s\n", purl);
-			purl += 100;
-		}
 		//debug_printf("urs=%s\n",pHandle->pRegisterTable->PC_urlNumsReg);
 #endif
 
