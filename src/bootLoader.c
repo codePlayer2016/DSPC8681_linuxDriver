@@ -392,7 +392,8 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int processor
 	}
 
 	(pRegisterTable->pushCodeControl) = PC_PUSHCODE_RESET;
-	for (coreIndex = 1; coreIndex < 8; coreIndex++)
+	//for (coreIndex = 1; coreIndex < 8; coreIndex++)
+	for (coreIndex = 1; coreIndex < 2; coreIndex++)
 	{
 		DPUCoreLength = ((sizeof(_DPUCore) + 3) / 4) * 4;
 		debug_printf("the CodeLength = %x \n", DPUCoreLength);
@@ -426,10 +427,12 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int processor
 	}
 	(pRegisterTable->pushCodeControl) = PC_PUSHCODE_RESET;
 
+	unsigned int setWhichCoreRun=0x03;//for 0,1.and 0xff for 8 cores.
 	//compare SetMultiCoreBootStatus to MulticoreCoreBootStatus to know if the core allBoot or not.
 	if (retPollVal == 0)
 	{
-		retPollVal = pollCompareValue(&(pRegisterTable->SetMultiCoreBootStatus), &(pRegisterTable->MultiCoreBootStatus), 0xffffffff);
+		//retPollVal = pollCompareValue(&(pRegisterTable->SetMultiCoreBootStatus), &(pRegisterTable->MultiCoreBootStatus), 0xffffffff);
+		retPollVal = pollCompareValue(&setWhichCoreRun, &(pRegisterTable->MultiCoreBootStatus), 0xffffffff);
 		if (retPollVal == 0)
 		{
 			debug_printf("compare SetMultiCoreBootStatus to MulticoreCoreBootStatus successful \n");
