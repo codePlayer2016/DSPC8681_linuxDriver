@@ -97,7 +97,9 @@ int pollCompareValue(uint32_t *pAddress, uint32_t *qAddress, uint32_t maxPollCou
 		printk("");
 		setTimeVal = (*pAddress);
 		realTimeVal = (*qAddress);
-		if ((realTimeVal & setTimeVal) == 0xff)
+		//if ((realTimeVal & setTimeVal) == 0xff) // for all 8 cores.
+		//if ((realTimeVal & setTimeVal) == 0x03)// for 0,1 cores.
+		if (realTimeVal == setTimeVal)
 		{
 			stopPoll = 1;
 		}
