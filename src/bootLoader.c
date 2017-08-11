@@ -16,7 +16,8 @@
 //#include "DSP_TBL_6678_U1.h"
 //#include "DSP_TBL_6678_U2.h"
 //#include "DSP_TBL_6678_U3.h"
-#include "DPUCore_6678.h"
+#include "DPUCore1_6678.h"
+#include "DPUCore2_6678.h"
 #include "app4Core0_6678.h"
 //#include "DPUCore0_6678.h"
 //#include "dspCodeImg.h"
@@ -26,8 +27,12 @@
 #define OB_MASK_TWO 	(0xFFE00000)  	// 21-31
 #define OB_MASK_FOUR 	(0xFFC00000) 	// 22-31
 #define OB_MASK_EIGHT 	(0xFF800000)	// 23-31
+
+//#define ALG_HEX_ARRAY_NAME4CORE(n) _DPUCore##n
+
 #define DMA_TRANSFER_SIZE            (0x400000U)
 LinkLayerRegisterTable *gpRegisterTable[4];
+
 
 //
 // small tools.
@@ -392,11 +397,61 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int processor
 	}
 
 	(pRegisterTable->pushCodeControl) = PC_PUSHCODE_RESET;
+
+	uint8_t *pHexCodeArray=NULL;
+	uint32_t hexCodeArrayLen=0;
 	//for (coreIndex = 1; coreIndex < 8; coreIndex++)
-	for (coreIndex = 1; coreIndex < 2; coreIndex++)
+	for (coreIndex = 1; coreIndex < 3; coreIndex++)
 	{
-		DPUCoreLength = ((sizeof(_DPUCore) + 3) / 4) * 4;
-		debug_printf("the CodeLength = %x \n", DPUCoreLength);
+		switch(coreIndex)
+		{
+		case 1:
+		{
+			hexCodeArrayLen=sizeof(_DPUCore1);
+			pHexCodeArray=_DPUCore1;
+		}
+			break;
+		case 2:
+		{
+			hexCodeArrayLen=sizeof(_DPUCore2);
+			pHexCodeArray=_DPUCore2;
+		}
+			break;
+//		case 3:
+//		{
+//			hexCodeArrayLen=sizeof(_DPUCore3);
+//			pHexCodeArray=_DPUCore3;
+//		}
+//			break;
+//		case 4:
+//		{
+//			hexCodeArrayLen=sizeof(_DPUCore4);
+//			pHexCodeArray=_DPUCore4;
+//		}
+//			break;
+//		case 5:
+//		{
+//			hexCodeArrayLen=sizeof(_DPUCore5);
+//			pHexCodeArray=_DPUCore5;
+//		}
+//			break;
+//		case 6:
+//		{
+//			hexCodeArrayLen=sizeof(_DPUCore6);
+//			pHexCodeArray=_DPUCore6;
+//		}
+//			break;
+//		case 7:
+//		{
+//			hexCodeArrayLen=sizeof(_DPUCore7);
+//			pHexCodeArray=_DPUCore7;
+//		}
+//			break;
+		}
+
+		//DPUCoreLength = ((sizeof(_DPUCore) + 3) / 4) * 4;
+		//DPUCoreLength = ((sizeof(algHexArrayName) + 3) / 4) * 4;
+		debug_printf("the CodeLength = %x \n", hexCodeArrayLen);
 		//* 1.updateWriteBuffer(resetBeforeWrite);
 		(pRegisterTable->pushCodeControl) = PC_PUSHCODE_RESET;
 
@@ -405,7 +460,8 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int processor
 		DSP_GETCODE_RESET, 0xffffffff);
 
 		//* 3.writeOutBuffer().
-		memcpy(pPutDSPImgZone, _DPUCore, DPUCoreLength);
+		//memcpy(pPutDSPImgZone, _DPUCore, DPUCoreLength);
+		memcpy(pPutDSPImgZone, pHexCodeArray, hexCodeArrayLen);
 
 		//* 4.updateWriteBuffer(finished);
 		(pRegisterTable->pushCodeControl) = PC_PUSHCODE_FINISH;
@@ -424,10 +480,11 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int processor
 			debug_printf("error\n");
 			return (retValue);
 		}
+		(pRegisterTable->pushCodeControl) = PC_PUSHCODE_RESET;
 	}
-	(pRegisterTable->pushCodeControl) = PC_PUSHCODE_RESET;
 
-	unsigned int setWhichCoreRun=0x03;//for 0,1.and 0xff for 8 cores.
+
+	unsigned int setWhichCoreRun=0x07;//for 0,1,3.and 0xff for 8 cores.
 	//compare SetMultiCoreBootStatus to MulticoreCoreBootStatus to know if the core allBoot or not.
 	if (retPollVal == 0)
 	{
