@@ -400,8 +400,9 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg, int processor
 
 	uint8_t *pHexCodeArray=NULL;
 	uint32_t hexCodeArrayLen=0;
+	int bootCoreNum=3;// boot 1,2
 	//for (coreIndex = 1; coreIndex < 8; coreIndex++)
-	for (coreIndex = 1; coreIndex < 3; coreIndex++)
+	for (coreIndex = 1; coreIndex < bootCoreNum; coreIndex++)
 	{
 		switch(coreIndex)
 		{
