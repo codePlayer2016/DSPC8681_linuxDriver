@@ -11,8 +11,10 @@
 #include "common.h"
 #include "bootLoader.h"
 #include "DPURegs.h"
-#include "DSP_TBL_6678.h"
-#include "dspCodeImg.h"
+//#include "DSP_TBL_6678.h"
+#include "bootLoader_6678.h"
+//#include "dspCodeImg.h"
+#include "DPUCore_6678.h"
 #include "LinkLayer.h"
 
 #define OB_MASK_ONE 	(0xFFF00000)  	// 20-31
@@ -326,7 +328,7 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
 	{}
 
 // pushs DSPInit code.
-	retValue = uploadProgram(pPcieBarReg, _thirdBLCode, 0);
+	retValue = uploadProgram(pPcieBarReg, _bootLoaderEntry, 0);
 
 // waits DSPInitReady.
 	if (retValue == 0)
@@ -377,7 +379,7 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
 
 	}
 
-// wait the dsp crc check result.
+#if 0// wait the dsp crc check result.
 	if (retPollVal == 0)
 	{
 		retPollVal = pollValue(&(pRegisterTable->DPUBootStatus),
@@ -398,6 +400,7 @@ int bootLoader(struct pci_dev *pPciDev, pcieBarReg_t *pPcieBarReg)
 	else
 	{
 	}
+#endif
 
 // wait the dsp jump to the dpm code.
 	if (retPollVal == 0)
