@@ -441,20 +441,20 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 	switch (cmd)
 	{
-	case DPU_IO_CMD_CONFIRM:
-	{
-		stateCode = LinkLayer_Confirm(pLinkLayer, (LINKLAYER_IO_TYPE) arg);
-
-		if (stateCode != 0)
-		{
-			printk("LinkLayer_Confirm failed: %x\n", stateCode);
-		}
-		else
-		{
-		}
-
-		break;
-	}
+//	case DPU_IO_CMD_CONFIRM:
+//	{
+//		stateCode = LinkLayer_Confirm(pLinkLayer, (LINKLAYER_IO_TYPE) arg);
+//
+//		if (stateCode != 0)
+//		{
+//			printk("LinkLayer_Confirm failed: %x\n", stateCode);
+//		}
+//		else
+//		{
+//		}
+//
+//		break;
+//	}
 
 	case DPU_IO_CMD_WAITBUFFERREADY:
 	{
@@ -521,6 +521,7 @@ long DPU_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		{
 			debug_printf("LinkLayer_WaitDpmReady finished\n");
 		}
+		//copy_to_user((pParam->pBufStatus), &stateCode, sizeof(int));
 		break;
 
 	}
@@ -616,15 +617,15 @@ static irqreturn_t ISR_handler(int irq, void *arg)
 		printk("cyx receive interrupt from dsp\n");
 	}
 	//cheak zone status
-	retValue = LinkLayer_CheckStatus(gpRegisterTable);
-	if (retValue == 0)
-	{
-		debug_printf("LinkLayer_CheckStatus success\n");
-	}
-	else
-	{
-		debug_printf("LinkLayer_CheckStatus error\n");
-	}
+//	retValue = LinkLayer_CheckStatus(gpRegisterTable);
+//	if (retValue == 0)
+//	{
+//		debug_printf("LinkLayer_CheckStatus success\n");
+//	}
+//	else
+//	{
+//		debug_printf("LinkLayer_CheckStatus error\n");
+//	}
 
 	PCI_ClearDspInterrupt(g_pPcieBarReg);
 

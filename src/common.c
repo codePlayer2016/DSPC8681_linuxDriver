@@ -52,3 +52,34 @@ int pollValue(uint32_t *pAddress, uint32_t pollVal, uint32_t maxPollCount)
 
 	return (retVal);
 }
+int pollEqualValue(uint32_t *pAddress, uint32_t pollVal, uint32_t maxPollCount)
+{
+	int retVal = 0;
+	uint32_t loopCount = 0;
+	uint32_t stopPoll = 0;
+	uint32_t realTimeVal = 0;
+
+	for (loopCount = 0; (loopCount < maxPollCount) && (stopPoll == 0); loopCount++)
+	{
+		printk("");
+		realTimeVal = (*pAddress);
+		if (realTimeVal==pollVal)
+		{
+			stopPoll = 1;
+		}
+		else
+		{
+		}
+	}
+	if (loopCount < maxPollCount)
+	{
+		retVal = 0;
+		//debug_printf("target=%x,action=%x\n",pollVal,realTimeVal);
+	}
+	else
+	{
+		retVal = -1;
+	}
+
+	return (retVal);
+}

@@ -33,6 +33,29 @@
 #define DSP_WT_READY 	(0xaa000055U)
 #define DSP_WT_OVER 	(0x550000aaU)
 #define DSP_WT_BUSY		(0x55555555U)
+
+
+/********************PC write to DSP.*/
+// DSP-side read buffer status.(pc polling)
+#define DSP_RD_RESET	(0x000055aaU)
+#define DSP_RD_FINISH 	(0x550000aaU)
+// PC-side write buffer status.(pc set)
+#define PC_WT_RESET 	(0x0000aa55U)
+#define PC_WT_FINISH 	(0xaa000055U)
+/*************************************/
+
+/********************DSP write to PC.*/
+// PC-side read buffer status.(pc set)
+#define PC_RD_RESET		(0x000077bbU)
+#define PC_RD_FINISH	(0x770000bbU)
+// DSP-side write buffer status.(pc polling)
+#define DSP_WT_RESET	(0x0000bb77U)
+#define DSP_WT_FINISH	(0xbb000077U)
+/*************************************/
+
+
+
+
 //dpm start and over flag
 #define PC_DPM_STARTSTATUS   (0x0505aa00U)
 #define PC_DPM_STARTCLR   (0x0a0a5500U)
@@ -41,7 +64,7 @@
 #define PC_DPM_OVERCLR (0x005a5a00U)
 
 #define PC_DPM_ALLOVER (0x00005a5aU)
-
+#if 0
 typedef enum __tagLINKLAYER_IO_TYPE
 {
 	LINKLAYER_IO_READ = 0,
@@ -50,6 +73,25 @@ typedef enum __tagLINKLAYER_IO_TYPE
 	LINKLAYER_IO_WRITE_FIN = 3,
 	LINKLAYER_IO_START = 4,
 	LINKLAYER_IO_OVER = 5
+} LINKLAYER_IO_TYPE;
+#endif
+typedef enum __tagLINKLAYER_IO_TYPE
+{
+	LINKLAYER_IO_RESERVER = 0,
+	LINKLAYER_IO_WRITE_RESET = 1,
+	LINKLAYER_IO_WRITE_QRESET = 2,
+	LINKLAYER_IO_WRITE_FIN = 3,
+	LINKLAYER_IO_WRITE_QFIN = 4,
+	LINKLAYER_IO_READ_RESET = 5,
+	LINKLAYER_IO_READ_QRESET = 6,
+	LINKLAYER_IO_READ_FIN = 7,
+	LINKLAYER_IO_READ_QFIN = 8,
+	LINKLAYER_IO_READ ,
+	LINKLAYER_IO_WRITE,
+	//LINKLAYER_IO_READ_FIN ,
+	//LINKLAYER_IO_WRITE_FIN ,
+	LINKLAYER_IO_START ,
+	LINKLAYER_IO_OVER
 } LINKLAYER_IO_TYPE;
 // TODO: merge the structure in LinkLayer.h and common.h
 typedef struct _tagLinkLayerRegisterTable
@@ -63,7 +105,8 @@ typedef struct _tagLinkLayerRegisterTable
 	uint32_t dpmOverStatus;
 	uint32_t dpmStartStatus;
 	uint32_t dpmAllOverStatus;
-	uint32_t reserved0[0x1000 / 4 - 8];
+	uint32_t pollSyncSignalStatus;
+	uint32_t reserved0[0x1000 / 4 - 9];
 
 	// control registers. (4k)
 	uint32_t DPUBootControl;
